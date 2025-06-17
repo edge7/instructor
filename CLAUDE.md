@@ -66,5 +66,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Example code should include complete imports and environment setup
 - Tutorials should progress from simple to complex concepts
 - New features should include conceptual explanation in `docs/concepts/`
+- **Prefer `from_provider()`**: In examples and documentation, use `instructor.from_provider()` instead of provider-specific functions like `from_openai()` or `from_anthropic()` for automatic provider detection and consistency
 
 The library enables structured LLM outputs using Pydantic models across multiple providers with type safety.

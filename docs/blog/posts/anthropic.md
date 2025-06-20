@@ -37,18 +37,20 @@ import instructor
 
 # Patching the Anthropics client with the instructor for enhanced capabilities
 anthropic_client = instructor.from_openai(
-    create=anthropic.Anthropic().messages.create,
-    mode=instructor.Mode.ANTHROPIC_JSON
+    create=anthropic.Anthropic().messages.create, mode=instructor.Mode.ANTHROPIC_JSON
 )
+
 
 class Properties(BaseModel):
     name: str
     value: str
 
+
 class User(BaseModel):
     name: str
     age: int
     properties: List[Properties]
+
 
 user_response = anthropic_client(
     model="claude-3-haiku-20240307",
@@ -75,6 +77,7 @@ print(user_response.model_dump_json(indent=2))
         }
     ]
 }
+"""
 ```
 
 We're encountering challenges with deeply nested types and eagerly invite the community to test, provide feedback, and suggest necessary improvements as we enhance the anthropic client's support.

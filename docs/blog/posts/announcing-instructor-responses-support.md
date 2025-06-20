@@ -29,12 +29,10 @@ Getting started is now easier than ever. With our unified provider interface, yo
 
 ```python
 import instructor
-from pydantic import BaseModel
 
 # Initialize the client with Responses mode
 client = instructor.from_provider(
-    "openai/gpt-4.1-mini",
-    mode=instructor.Mode.RESPONSES_TOOLS
+    "openai/gpt-4.1-mini", mode=instructor.Mode.RESPONSES_TOOLS
 )
 ```
 
@@ -46,6 +44,7 @@ Here's a quick example showing how it works:
 class User(BaseModel):
     name: str
     age: int
+
 
 # Create structured output
 profile = client.responses.create(
@@ -70,9 +69,11 @@ class Citation(BaseModel):
     id: int
     url: str
 
+
 class Summary(BaseModel):
     citations: list[Citation]
     summary: str
+
 
 response = client.responses.create(
     input="What are some of the best places to visit in New York for Latin American food?",
@@ -88,14 +89,11 @@ For production applications, we've maintained full async support. This lets you 
 ```python
 async def get_user_profile():
     async_client = instructor.from_provider(
-        "openai/gpt-4.1-mini",
-        mode=instructor.Mode.RESPONSES_TOOLS,
-        async_client=True
+        "openai/gpt-4.1-mini", mode=instructor.Mode.RESPONSES_TOOLS, async_client=True
     )
 
     profile = await async_client.responses.create(
-        input="Extract: Maria lives in Spain.",
-        response_model=UserProfile
+        input="Extract: Maria lives in Spain.", response_model=UserProfile
     )
 ```
 
@@ -138,8 +136,8 @@ response = client.chat.completions.create(
     response_model=Summary,
 )
 print(response)
-# > citations=[Citation(id=1,url=....)]
-# > summary = New York City offers a rich variety of ...
+#> citations=[Citation(id=1,url=....)]
+#> summary = New York City offers a rich variety of ...
 ```
 
 This makes the path forward clear - you can enhance your existing applications with the latest OpenAI features while maintaining the type safety and validation Instructor is known for. No need to learn a new API or refactor your code. It just works.

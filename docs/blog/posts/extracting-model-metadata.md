@@ -96,7 +96,7 @@ First, we read in the taxonomy from a yaml file and create a set of categories, 
 ```python
 import yaml
 
-with open("taxonomy.yml", "r") as file:
+with open("taxonomy.yml") as file:
     taxonomy = yaml.safe_load(file)
 
 colors = taxonomy["colors"]
@@ -228,7 +228,7 @@ PersonalStyle(
     categories=['tops', 'bottoms'],
     subcategories=['sweaters', 'jackets', 'pants'],
     product_types=['cardigan', 'crewneck', 'denim_jackets', 'chinos'],
-    colors=['brown', 'beige', 'black', 'white', 'navy']
+    colors=['brown', 'beige', 'black', 'white', 'navy'],
 )
 ```
 

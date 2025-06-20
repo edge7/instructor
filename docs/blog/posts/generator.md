@@ -80,7 +80,7 @@ def calculate_time_for_first_result_with_list(func_input, func):
     result = [func(x) for x in func_input][0]
     end_perf = time.perf_counter()
     print(f"Time for first result (list): {end_perf - start_perf:.2f} seconds")
-    #> Time for first result (list): 5.02 seconds
+    #> Time for first result (list): 5.00 seconds
     return result
 
 

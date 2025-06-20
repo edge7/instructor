@@ -325,13 +325,13 @@ def benchmark_memory() -> dict[str, float]:
     langchain_start = get_memory_usage()
 
     try:
-        from langchain.output_parsers import PydanticOutputParser
-        from langchain.prompts import PromptTemplate
-        from langchain_openai import ChatOpenAI
-        from langchain.schema import BaseOutputParser
+        # Testing Imports
+        from langchain.output_parsers import PydanticOutputParser  # type: ignore # noqa: F401
+        from langchain.prompts import PromptTemplate  # type: ignore # noqa: F401
+        from langchain_openai import ChatOpenAI  # type: ignore # noqa: F401
 
         langchain_end = get_memory_usage()
-        langchain_usage = langchain_end - baseline_memory
+        langchain_usage = langchain_end - langchain_start
         results["langchain"] = langchain_usage
         print(f"  LangChain imports: +{langchain_usage:.1f} MB")
     except ImportError as e:

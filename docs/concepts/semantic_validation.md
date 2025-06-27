@@ -89,10 +89,8 @@ flowchart TD
 Here's a complete example of semantic validation in action:
 
 ```python
-# Standard library imports
 from typing import Annotated
 
-# Third-party imports
 from pydantic import BaseModel, BeforeValidator
 import instructor
 from instructor import llm_validator
@@ -198,7 +196,6 @@ class ForumPost(BaseModel):
         )
     ]
 
-    # Using Jinja templating for validation against dynamic values
     @classmethod
     def validate_post(cls, topic_name: str, post_content: str) -> "ForumPost":
         return client.chat.completions.create(
@@ -207,7 +204,7 @@ class ForumPost(BaseModel):
                 {
                     "role": "system",
                     "content": """Validate that the forum post content stays relevant to the topic.
-                    If it's not relevant, explain why in detail."""
+                    If it's not relevant, explain why in detail.""",
                 },
                 {
                     "role": "user",
@@ -218,13 +215,10 @@ class ForumPost(BaseModel):
                     {{ post }}
 
                     Is this post relevant to the topic?
-                    """
-                }
+                    """,
+                },
             ],
-            context={
-                "topic": topic_name,
-                "post": post_content
-            }
+            context={"topic": topic_name, "post": post_content},
         )
 ```
 
@@ -257,14 +251,14 @@ class FactCheckedClaim(BaseModel):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a fact-checking system. Assess the factual accuracy of the claim."
+                    "content": "You are a fact-checking system. Assess the factual accuracy of the claim.",
                 },
                 {
                     "role": "user",
-                    "content": "Fact check this claim: {{ claim }}"
-                }
+                    "content": "Fact check this claim: {{ claim }}",
+                },
             ],
-            context={"claim": text}
+            context={"claim": text},
         )
 ```
 
@@ -295,7 +289,7 @@ class Report(BaseModel):
             messages=[
                 {
                     "role": "system",
-                    "content": "Validate that the summary accurately reflects the key findings."
+                    "content": "Validate that the summary accurately reflects the key findings.",
                 },
                 {
                     "role": "user",
@@ -311,14 +305,14 @@ class Report(BaseModel):
                         {% endfor %}
 
                         Evaluate for consistency, completeness, and accuracy.
-                    """
-                }
+                    """,
+                },
             ],
             context={
                 "title": self.title,
                 "summary": self.summary,
-                "findings": self.key_findings
-            }
+                "findings": self.key_findings,
+            },
         )
 
         if not validation_result.is_valid:

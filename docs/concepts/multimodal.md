@@ -69,7 +69,7 @@ response = client.chat.completions.create(
 )
 
 print(response)
-# > description='A bush with numerous clusters of blueberries surrounded by green leaves, under a cloudy sky.' items=['blueberries', 'green leaves', 'cloudy sky']
+#> description='A bush with numerous clusters of blueberries surrounded by green leaves, under a cloudy sky.' items=['blueberries', 'green leaves', 'cloudy sky']
 ```
 
 We also provide a `autodetect_image` keyword argument that allows you to provide URLs or file paths as normal strings when you set it to true.
@@ -106,7 +106,7 @@ response = client.chat.completions.create(
 )
 
 print(response)
-# > description='A bush with numerous clusters of blueberries surrounded by green leaves, under a cloudy sky.' items=['blueberries', 'green leaves', 'cloudy sky']
+#> description='A bush with numerous clusters of blueberries surrounded by green leaves, under a cloudy sky.' items=['blueberries', 'green leaves', 'cloudy sky']
 ```
 
 If you'll like to support Anthropic prompt caching with images, we provide the `ImageWithCacheControl` Object to do so. Simply use the `from_image_params` method and you'll be able to leverage Anthropic's prompt caching.
@@ -152,10 +152,10 @@ response, completion = client.chat.completions.create_with_completion(
 )
 
 print(response)
-# > description='A bush with numerous clusters of blueberries surrounded by green leaves, under a cloudy sky.' items=['blueberries', 'green leaves', 'cloudy sky']
+#> description='A bush with numerous clusters of blueberries surrounded by green leaves, under a cloudy sky.' items=['blueberries', 'green leaves', 'cloudy sky']
 
 print(completion.usage.cache_creation_input_tokens)
-# > 1820
+#> 1820
 ```
 
 By leveraging Instructor's multimodal capabilities, you can focus on building your application logic without worrying about the intricacies of each provider's image handling format. This not only saves development time but also makes your code more maintainable and adaptable to future changes in AI provider APIs.
@@ -268,7 +268,7 @@ We provide examples of how to use all three object classes below.
  )
 
  print(response)
- # > Total = 220, items = ['English Tea', 'Tofu']
+ #> Total = 220, items = ['English Tea', 'Tofu']
 ```
 
 ### Caching
@@ -309,10 +309,10 @@ response, completion = client.chat.completions.create_with_completion(
 )
 
 print(response)
-# > Total = 220, items = ['English Tea', 'Tofu']
+#> Total = 220, items = ['English Tea', 'Tofu']
 
 print(completion.usage.cache_creation_input_tokens)
-# > 2091
+#> 2091
 ```
 
 ### Using Files
@@ -364,7 +364,7 @@ response = client.chat.completions.create(
 )
 
 print(response)
-# > Total = 220, items = ['English Tea', 'Tofu']
+#> Total = 220, items = ['English Tea', 'Tofu']
 ```
 
 If you've already uploaded your file ahead of time, we also support it. Just provide us with the file name as seen below
@@ -412,7 +412,7 @@ response = client.chat.completions.create(
 )
 
 print(response)
-# > Total = 220, items = ['English Tea', 'Tofu']
+#> Total = 220, items = ['English Tea', 'Tofu']
 ```
 
 This way you have more granular control over how the file is uploaded, potentially also processing multiple file uploads at once too.

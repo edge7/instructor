@@ -180,7 +180,6 @@ from openai import OpenAI
 from pydantic import BaseModel
 import instructor
 from instructor.multimodal import Audio
-import base64
 
 # Initialize the client
 client = instructor.from_openai(OpenAI())

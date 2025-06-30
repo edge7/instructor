@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from functools import partial
 import inspect
 from typing import (
@@ -17,34 +19,32 @@ from typing import (
 # Optional heavy dependencies ------------------------------------------------
 # ---------------------------------------------------------------------------
 
-try:
-    import openai  # type: ignore
-    from openai.types.chat import ChatCompletionMessageParam  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover – optional dependency
-    openai = None  # type: ignore  # pylint: disable=invalid-name
+if TYPE_CHECKING:  # pragma: no cover – used only by static analysers
+    from openai.types.chat import ChatCompletionMessageParam  # type: ignore  # noqa: F401
+    import openai  # type: ignore  # noqa: F401
+else:  # runtime – handle missing optional dependency gracefully
+    try:
+        import openai  # type: ignore  # pylint: disable=import-error
+        from openai.types.chat import ChatCompletionMessageParam  # type: ignore  # noqa: N811
+    except ModuleNotFoundError:  # pragma: no cover – optional dependency
+        openai = None  # type: ignore  # pylint: disable=invalid-name
 
-    # ------------------------------------------------------------------
-    # Create *type* placeholders so that our later type annotations remain
-    # syntactically valid when the real library is missing.
-    # ------------------------------------------------------------------
-
-    class _ChatCompletionMessageParam(dict):  # noqa: D401
-        """Fallback version emulating OpenAI SDK's message param dict."""
-
-    ChatCompletionMessageParam = _ChatCompletionMessageParam  # type: ignore  # noqa: N816
+        # Fallback placeholder so runtime type expressions remain valid.
+        class ChatCompletionMessageParam(dict):  # type: ignore # noqa: N801 D401
+            """Minimal stub matching the structure of OpenAI message params."""
 
 
-try:
+if TYPE_CHECKING:
     from tenacity import AsyncRetrying, Retrying  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover – optional dependency
-    class _DummyRetrying:  # noqa: D401
-        """Lightweight stand-in for *tenacity* retrying classes."""
+else:
+    try:
+        from tenacity import AsyncRetrying, Retrying  # type: ignore
+    except ModuleNotFoundError:  # pragma: no cover – optional dependency
+        class Retrying:  # type: ignore  # noqa: D401
+            """Dummy replacement when *tenacity* is absent."""
 
-    class _DummyAsyncRetrying:  # noqa: D401
-        pass
-
-    Retrying = _DummyRetrying  # type: ignore  # noqa: N816
-    AsyncRetrying = _DummyAsyncRetrying  # type: ignore  # noqa: N816
+        class AsyncRetrying:  # type: ignore  # noqa: D401 N801
+            pass
 
 
 try:

@@ -13,7 +13,9 @@ from instructor.client import AsyncInstructor, Instructor
 def from_bedrock(
     client: boto3.client,
     mode: instructor.Mode = instructor.Mode.BEDROCK_TOOLS,
-    _async: Literal[False] = False,
+    async_client: Literal[False] = False,
+    *,
+    _async: Literal[False] | None = None,  # Deprecated
     **kwargs: Any,
 ) -> Instructor: ...
 
@@ -22,7 +24,9 @@ def from_bedrock(
 def from_bedrock(
     client: boto3.client,
     mode: instructor.Mode = instructor.Mode.BEDROCK_TOOLS,
-    _async: Literal[True] = True,
+    async_client: Literal[True] = True,
+    *,
+    _async: Literal[True] | None = None,  # Deprecated
     **kwargs: Any,
 ) -> AsyncInstructor: ...
 
@@ -39,7 +43,8 @@ def handle_bedrock_json(
 def from_bedrock(
     client: BaseClient,
     mode: instructor.Mode = instructor.Mode.BEDROCK_JSON,
-    _async: bool = False,
+    async_client: bool | None = None,
+    _async: bool | None = None,
     **kwargs: Any,
 ) -> Instructor | AsyncInstructor:
     valid_modes = {
@@ -64,12 +69,33 @@ def from_bedrock(
             f"Got: {type(client).__name__}"
         )
 
+    # Determine async flag
+    if async_client is not None and _async is not None:
+        from instructor.exceptions import ConfigurationError
+
+        raise ConfigurationError(
+            "Provide only the 'async_client' parameter. '_async' is deprecated."
+        )
+
+    if _async is not None:
+        import warnings
+
+        warnings.warn(
+            "'_async' is deprecated and will be removed in a future release. "
+            "Use 'async_client' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        async_client = _async if async_client is None else async_client
+
+    is_async = bool(async_client)
+
     async def async_wrapper(**kwargs: Any):
         return client.converse(**kwargs)
 
     create = client.converse
 
-    if _async:
+    if is_async:
         return AsyncInstructor(
             client=client,
             create=instructor.patch(create=async_wrapper, mode=mode),

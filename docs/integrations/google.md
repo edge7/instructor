@@ -72,7 +72,7 @@ async def extract_user():
         client=genai.GenerativeModel(
             model_name="models/gemini-1.5-flash-latest",
         ),
-        use_async=True,
+        async_client=True,
     )
 
     user = await client.chat.completions.create(

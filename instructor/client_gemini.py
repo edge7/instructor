@@ -12,7 +12,9 @@ import instructor
 def from_gemini(
     client: genai.GenerativeModel,
     mode: instructor.Mode = instructor.Mode.GEMINI_JSON,
-    use_async: Literal[True] = True,
+    async_client: Literal[True] = True,
+    *,
+    use_async: Literal[True] | None = None,  # Deprecated
     **kwargs: Any,
 ) -> instructor.AsyncInstructor: ...
 
@@ -21,7 +23,9 @@ def from_gemini(
 def from_gemini(
     client: genai.GenerativeModel,
     mode: instructor.Mode = instructor.Mode.GEMINI_JSON,
-    use_async: Literal[False] = False,
+    async_client: Literal[False] = False,
+    *,
+    use_async: Literal[False] | None = None,  # Deprecated
     **kwargs: Any,
 ) -> instructor.Instructor: ...
 
@@ -29,7 +33,8 @@ def from_gemini(
 def from_gemini(
     client: genai.GenerativeModel,
     mode: instructor.Mode = instructor.Mode.GEMINI_JSON,
-    use_async: bool = False,
+    async_client: bool | None = None,
+    use_async: bool | None = None,
     **kwargs: Any,
 ) -> instructor.Instructor | instructor.AsyncInstructor:
     valid_modes = {
@@ -52,7 +57,28 @@ def from_gemini(
             f"Got: {type(client).__name__}"
         )
 
-    if use_async:
+    # Determine async mode
+    if async_client is not None and use_async is not None:
+        from instructor.exceptions import ConfigurationError
+
+        raise ConfigurationError(
+            "Provide only the 'async_client' parameter. 'use_async' is deprecated."
+        )
+
+    if use_async is not None:
+        import warnings
+
+        warnings.warn(
+            "'use_async' is deprecated and will be removed in a future release. "
+            "Use 'async_client' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        async_client = use_async if async_client is None else async_client
+
+    is_async = bool(async_client)
+
+    if is_async:
         create = client.generate_content_async
         return instructor.AsyncInstructor(
             client=client,

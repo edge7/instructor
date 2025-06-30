@@ -71,7 +71,7 @@ class User(BaseModel):
 client = instructor.from_vertexai(
     client=GenerativeModel("gemini-1.5-pro-preview-0409"),
     mode=instructor.Mode.VERTEXAI_TOOLS,
-    _async=True,
+    async_client=True,
 )
 
 async def extract_user():
@@ -187,7 +187,7 @@ class UserExtract(BaseModel):
 client = instructor.from_vertexai(
     client=GenerativeModel("gemini-2.0-flash"),
     mode=instructor.Mode.VERTEXAI_TOOLS,
-    _async=True,
+    async_client=True,
 )
 
 async def stream_partial():

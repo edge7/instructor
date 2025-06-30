@@ -138,7 +138,8 @@ def vertexai_process_json_response(_kwargs: dict[str, Any], model: BaseModel):
 def from_vertexai(
     client: gm.GenerativeModel,
     mode: instructor.Mode = instructor.Mode.VERTEXAI_TOOLS,
-    _async: bool = False,
+    async_client: bool | None = None,
+    _async: bool | None = None,
     use_async: bool | None = None,
     **kwargs: Any,
 ) -> instructor.Instructor:
@@ -165,24 +166,44 @@ def from_vertexai(
             f"Got: {type(client).__name__}"
         )
 
-    if use_async is not None and _async != False:
+    # ------------------------------------------------------------------
+    # Handle legacy parameter names and new `async_client` flag
+    # Priority (new → old) : async_client > use_async > _async
+    # Emit deprecation warnings when old parameters are supplied.
+    # ------------------------------------------------------------------
+
+    if async_client is not None and (use_async is not None or _async is not None):
         from instructor.exceptions import ConfigurationError
 
         raise ConfigurationError(
-            "Cannot provide both '_async' and 'use_async'. Use 'use_async' instead."
+            "Provide only the 'async_client' parameter. The '_async' and 'use_async' "
+            "parameters are deprecated and should not be used together with 'async_client'."
         )
 
-    if _async and use_async is None:
+    if use_async is not None:
         import warnings
 
         warnings.warn(
-            "'_async' is deprecated. Use 'use_async' instead.",
+            "'use_async' is deprecated and will be removed in a future release. "
+            "Use 'async_client' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        use_async = _async
+        async_client = use_async if async_client is None else async_client
 
-    is_async = use_async if use_async is not None else _async
+    if _async is not None:
+        import warnings
+
+        warnings.warn(
+            "'_async' is deprecated and will be removed in a future release. "
+            "Use 'async_client' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        async_client = _async if async_client is None else async_client
+
+    # Fallback to synchronous client when nothing specified
+    is_async = bool(async_client)
 
     create = client.generate_content_async if is_async else client.generate_content
 

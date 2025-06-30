@@ -41,6 +41,7 @@ def _install_openai_stub() -> ModuleType:  # noqa: D401
     # ----------------------------------------------------
     # Stub client classes utilised by *instructor*
     # ----------------------------------------------------
+    # ---------------------------- Sync variant ---------------------------
     class _StubChatCompletions:  # noqa: D401
         @staticmethod
         def create(*_args, **_kwargs):  # noqa: D401
@@ -49,12 +50,25 @@ def _install_openai_stub() -> ModuleType:  # noqa: D401
     class _StubChat:  # noqa: D401
         completions = _StubChatCompletions()
 
-    class _BaseClient:  # noqa: D401
+    class _SyncClient:  # noqa: D401
         def __init__(self):
             self.chat = _StubChat()
 
-    openai_stub.OpenAI = _BaseClient  # type: ignore[attr-defined]
-    openai_stub.AsyncOpenAI = _BaseClient  # type: ignore[attr-defined]
+    # ---------------------------- Async variant --------------------------
+    class _StubAsyncChatCompletions:  # noqa: D401
+        @staticmethod
+        async def create(*_args, **_kwargs):  # noqa: D401
+            return {"status": "ok"}
+
+    class _StubAsyncChat:  # noqa: D401
+        completions = _StubAsyncChatCompletions()
+
+    class _AsyncClient:  # noqa: D401
+        def __init__(self):
+            self.chat = _StubAsyncChat()
+
+    openai_stub.OpenAI = _SyncClient  # type: ignore[attr-defined]
+    openai_stub.AsyncOpenAI = _AsyncClient  # type: ignore[attr-defined]
 
     # provide *types* submodule container
     openai_stub.types = types_mod  # type: ignore[attr-defined]
@@ -143,3 +157,59 @@ def test_legacy_fallback(monkeypatch):
             messages=[{"role": "user", "content": "hi"}],
         )
         assert isinstance(result, dict) and result["status"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Async client tests
+# ---------------------------------------------------------------------------
+
+
+import asyncio
+
+
+@pytest.mark.parametrize("mode_name", [None, "TOOLS", "JSON"])
+def test_async_provider_and_modes(monkeypatch, mode_name):
+    """Async client should work across multiple modes."""
+
+    openai_stub = _install_openai_stub()
+    monkeypatch.setitem(sys.modules, "openai", openai_stub)
+
+    import instructor.client as ic  # pylint: disable=import-error
+    ic = importlib.reload(ic)
+
+    from instructor import Mode  # import after stub
+
+    client = openai_stub.AsyncOpenAI()  # type: ignore[arg-type]
+
+    selected_mode = Mode.TOOLS if mode_name is None else getattr(Mode, mode_name)
+
+    inst = ic.from_openai(client, mode=selected_mode)
+
+    async def _call():
+        return await inst.create(
+            response_model=None,
+            messages=[{"role": "user", "content": "hello"}],
+        )
+
+    response = asyncio.run(_call())
+    assert response["status"] == "ok"
+
+
+def test_invalid_mode_raises(monkeypatch):
+    """Passing an invalid mode should raise an AssertionError (legacy assert)."""
+
+    openai_stub = _install_openai_stub()
+    monkeypatch.setitem(sys.modules, "openai", openai_stub)
+
+    import instructor.client as ic  # pylint: disable=import-error
+    ic = importlib.reload(ic)
+
+    client = openai_stub.OpenAI()  # type: ignore[arg-type]
+
+    class _FakeMode(str):  # noqa: D401
+        pass
+
+    fake_mode = _FakeMode("FAKE")  # type: ignore[arg-type]
+
+    with pytest.raises(AssertionError):
+        ic.from_openai(client, mode=fake_mode)  # type: ignore[arg-type]

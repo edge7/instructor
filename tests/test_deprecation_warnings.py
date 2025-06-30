@@ -2,7 +2,7 @@ import sys
 import types
 import warnings
 
-import pytest
+import pytest  # type: ignore
 
 # Import the module under test with optional stubbing of the external dependency.
 
@@ -37,7 +37,7 @@ _ensure_vertexai_stub()
 
 
 from instructor.client_vertexai import from_vertexai  # noqa: E402
-import vertexai.generative_models as gm  # noqa: E402, E501, type: ignore
+import vertexai.generative_models as gm  # type: ignore # noqa: E402, E501
 
 
 pytestmark = pytest.mark.filterwarnings("ignore::FutureWarning")

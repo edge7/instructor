@@ -8,6 +8,7 @@ from pydantic import BaseModel
 import instructor
 from instructor.dsl.parallel import get_types_array
 import jsonref
+import warnings
 
 
 def _create_gemini_json_schema(model: BaseModel):
@@ -140,6 +141,7 @@ def from_vertexai(
     mode: instructor.Mode = instructor.Mode.VERTEXAI_TOOLS,
     _async: bool = False,
     use_async: bool | None = None,
+    async_client: bool | None = None,
     **kwargs: Any,
 ) -> instructor.Instructor:
     valid_modes = {
@@ -165,24 +167,39 @@ def from_vertexai(
             f"Got: {type(client).__name__}"
         )
 
-    if use_async is not None and _async != False:
+    # Handle backwards compatibility
+    provided_params = sum([
+        _async != False,
+        use_async is not None,
+        async_client is not None
+    ])
+    
+    if provided_params > 1:
         from instructor.exceptions import ConfigurationError
 
         raise ConfigurationError(
-            "Cannot provide both '_async' and 'use_async'. Use 'use_async' instead."
+            "Cannot provide multiple async parameters. Use 'async_client' instead."
         )
 
-    if _async and use_async is None:
-        import warnings
-
+    # Determine the actual async value
+    is_async = False
+    
+    if async_client is not None:
+        is_async = async_client
+    elif use_async is not None:
         warnings.warn(
-            "'_async' is deprecated. Use 'use_async' instead.",
+            "'use_async' is deprecated. Use 'async_client' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        use_async = _async
-
-    is_async = use_async if use_async is not None else _async
+        is_async = use_async
+    elif _async:
+        warnings.warn(
+            "'_async' is deprecated. Use 'async_client' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        is_async = _async
 
     create = client.generate_content_async if is_async else client.generate_content
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from mistralai import Mistral
 import instructor
 from typing import overload, Any, Literal
+import warnings
 
 
 @overload
@@ -12,6 +13,7 @@ def from_mistral(
     client: Mistral,
     mode: instructor.Mode = instructor.Mode.MISTRAL_TOOLS,
     use_async: Literal[True] = True,
+    async_client: Literal[True] = ...,
     **kwargs: Any,
 ) -> instructor.AsyncInstructor: ...
 
@@ -21,6 +23,27 @@ def from_mistral(
     client: Mistral,
     mode: instructor.Mode = instructor.Mode.MISTRAL_TOOLS,
     use_async: Literal[False] = False,
+    async_client: Literal[False] = ...,
+    **kwargs: Any,
+) -> instructor.Instructor: ...
+
+
+@overload
+def from_mistral(
+    client: Mistral,
+    mode: instructor.Mode = instructor.Mode.MISTRAL_TOOLS,
+    use_async: bool = ...,
+    async_client: Literal[True] = True,
+    **kwargs: Any,
+) -> instructor.AsyncInstructor: ...
+
+
+@overload
+def from_mistral(
+    client: Mistral,
+    mode: instructor.Mode = instructor.Mode.MISTRAL_TOOLS,
+    use_async: bool = ...,
+    async_client: Literal[False] = False,
     **kwargs: Any,
 ) -> instructor.Instructor: ...
 
@@ -28,7 +51,8 @@ def from_mistral(
 def from_mistral(
     client: Mistral,
     mode: instructor.Mode = instructor.Mode.MISTRAL_TOOLS,
-    use_async: bool = False,
+    use_async: bool | None = None,
+    async_client: bool | None = None,
     **kwargs: Any,
 ) -> instructor.Instructor | instructor.AsyncInstructor:
     valid_modes = {
@@ -53,7 +77,28 @@ def from_mistral(
             f"Got: {type(client).__name__}"
         )
 
-    if use_async:
+    # Handle backwards compatibility
+    if use_async is not None and async_client is not None:
+        from instructor.exceptions import ConfigurationError
+
+        raise ConfigurationError(
+            "Cannot provide both 'use_async' and 'async_client'. Use 'async_client' instead."
+        )
+
+    # Determine the actual async value
+    is_async = False
+    
+    if async_client is not None:
+        is_async = async_client
+    elif use_async is not None:
+        warnings.warn(
+            "'use_async' is deprecated. Use 'async_client' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        is_async = use_async
+
+    if is_async:
 
         async def async_wrapper(
             *args: Any, **kwargs: dict[str, Any]

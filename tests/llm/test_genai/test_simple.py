@@ -37,7 +37,7 @@ def test_simple_extraction(client, model, mode):
 @pytest.mark.parametrize("model", models)
 @pytest.mark.parametrize("mode", modes)
 async def test_simple_extraction_async(aclient, model, mode):
-    aclient = instructor.from_genai(aclient, mode=mode, use_async=True)
+    aclient = instructor.from_genai(aclient, mode=mode, async_client=True)
     response = await aclient.chat.completions.create(
         model=model,
         messages=[

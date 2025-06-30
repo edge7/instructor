@@ -215,7 +215,7 @@ def test_autodetect_images_sync(client, model, mode, autodetect_images):
 @pytest.mark.parametrize("model", models)
 @pytest.mark.parametrize("mode", modes)
 async def test_autodetect_images_async(client, model, mode, autodetect_images):
-    client = instructor.from_genai(client, mode=mode, use_async=True)
+    client = instructor.from_genai(client, mode=mode, async_client=True)
 
     response = await client.chat.completions.create(
         model=model,

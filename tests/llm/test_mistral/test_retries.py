@@ -39,7 +39,7 @@ def test_mistral_retry_validation(client, model, mode):
 @pytest.mark.parametrize("mode", modes)
 @pytest.mark.parametrize("model", models)
 async def test_mistral_retry_validation_async(aclient, model, mode):
-    patched_client = instructor.from_mistral(aclient, mode=mode, use_async=True)
+    patched_client = instructor.from_mistral(aclient, mode=mode, async_client=True)
 
     # Test extracting structured data with validation that should trigger retry
     response = await patched_client.chat.completions.create(

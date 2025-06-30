@@ -207,7 +207,7 @@ def from_provider(
                 **kwargs,
             )  # type: ignore
             if async_client:
-                return from_genai(client, use_async=True, model=model_name, **kwargs)  # type: ignore
+                return from_genai(client, async_client=True, model=model_name, **kwargs)  # type: ignore
             else:
                 return from_genai(client, model=model_name, **kwargs)  # type: ignore
         except ImportError:
@@ -232,7 +232,7 @@ def from_provider(
                 )
 
             if async_client:
-                return from_mistral(client, model=model_name, use_async=True, **kwargs)
+                return from_mistral(client, model=model_name, async_client=True, **kwargs)
             else:
                 return from_mistral(client, model=model_name, **kwargs)
         except ImportError:
@@ -365,7 +365,7 @@ def from_provider(
             from instructor import from_vertexai
 
             client = gm.GenerativeModel(model_name=model_name)
-            return from_vertexai(client, use_async=async_client, **kwargs)
+            return from_vertexai(client, async_client=async_client, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The google-cloud-aiplatform package is required to use the VertexAI provider. "
@@ -380,7 +380,7 @@ def from_provider(
 
             client = GenerativeModel(model_name=model_name)
             if async_client:
-                return from_gemini(client, use_async=True, **kwargs)  # type: ignore
+                return from_gemini(client, async_client=True, **kwargs)  # type: ignore
             else:
                 return from_gemini(client, **kwargs)  # type: ignore
         except ImportError:

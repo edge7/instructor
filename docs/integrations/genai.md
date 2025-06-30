@@ -594,7 +594,7 @@ class User(BaseModel):
 async def extract_user():
     client = genai.Client()
     client = instructor.from_genai(
-        client, mode=instructor.Mode.GENAI_TOOLS, use_async=True
+        client, mode=instructor.Mode.GENAI_TOOLS, async_client=True
     )
 
     response = await client.chat.completions.create(

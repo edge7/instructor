@@ -97,7 +97,7 @@ print(user)
 
 ## Async Example
 
-For asynchronous operations, you can use the `use_async=True` parameter when creating the client:
+For asynchronous operations, you can use the `async_client=True` parameter when creating the client:
 
 ```python
 import os
@@ -119,7 +119,7 @@ client = Mistral(api_key=os.environ.get("MISTRAL_API_KEY"))
 instructor_client = from_mistral(
     client=client,
     mode=Mode.MISTRAL_TOOLS,
-    use_async=True,
+    async_client=True,
 )
 
 async def extract_user():
@@ -283,7 +283,7 @@ class UserExtract(BaseModel):
 
 # Initialize client with async support
 client = Mistral(api_key=os.environ.get("MISTRAL_API_KEY"))
-instructor_client = instructor.from_mistral(client, use_async=True)
+instructor_client = instructor.from_mistral(client, async_client=True)
 
 async def stream_partial():
     model = await instructor_client.chat.completions.create(

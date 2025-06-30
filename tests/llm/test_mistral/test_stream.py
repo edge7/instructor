@@ -68,7 +68,7 @@ def test_mistral_iterable_union_model(model, mode, client):
     "model, mode", product(models, [instructor.Mode.MISTRAL_STRUCTURED_OUTPUTS])
 )
 async def test_mistral_async_iterable_union_model(model, mode, aclient):
-    client = instructor.from_mistral(aclient, mode=mode, use_async=True)
+    client = instructor.from_mistral(aclient, mode=mode, async_client=True)
     model = client.chat.completions.create_iterable(
         model=model,
         messages=[
@@ -107,7 +107,7 @@ def test_mistral_sync_iterable_union_model(model, mode, client):
 @pytest.mark.parametrize("model, mode", product(models, modes))
 @pytest.mark.asyncio
 async def test_mistral_iterable_model_async(model, mode, aclient):
-    aclient = instructor.from_mistral(aclient, mode=mode, use_async=True)
+    aclient = instructor.from_mistral(aclient, mode=mode, async_client=True)
     model = aclient.chat.completions.create_iterable(
         model=model,
         response_model=UserExtract,
@@ -145,7 +145,7 @@ def test_mistral_partial_model(model, mode, client):
 @pytest.mark.parametrize("model,mode", product(models, modes))
 @pytest.mark.asyncio
 async def test_mistral_partial_model_async(model, mode, aclient):
-    aclient = instructor.from_mistral(aclient, mode=mode, use_async=True)
+    aclient = instructor.from_mistral(aclient, mode=mode, async_client=True)
     model = await aclient.chat.completions.create(
         model=model,
         response_model=Partial[UserExtract],

@@ -35,7 +35,7 @@ def test_iterable_model(model, mode):
 @pytest.mark.parametrize("model, mode", product(models, modes))
 @pytest.mark.asyncio
 async def test_iterable_model_async(model, mode):
-    client = instructor.from_vertexai(gm.GenerativeModel(model), mode, _async=True)
+    client = instructor.from_vertexai(gm.GenerativeModel(model), mode, async_client=True)
     response_stream = await client.chat.completions.create_iterable(
         response_model=UserExtract,
         messages=[
@@ -70,7 +70,7 @@ def test_partial_model(model, mode):
 @pytest.mark.parametrize("model, mode", product(models, modes))
 @pytest.mark.asyncio
 async def test_partial_model_async(model, mode):
-    client = instructor.from_vertexai(gm.GenerativeModel(model), mode, _async=True)
+    client = instructor.from_vertexai(gm.GenerativeModel(model), mode, async_client=True)
     response_stream = await client.chat.completions.create(
         response_model=Partial[UserExtract],
         max_retries=2,

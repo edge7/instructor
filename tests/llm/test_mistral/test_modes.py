@@ -37,7 +37,7 @@ def test_mistral_structured_outputs_sync(client, model, mode):
 @pytest.mark.parametrize("model", models)
 async def test_mistral_structured_outputs_async(aclient, model, mode):
     # Apply instructor patch with MISTRAL_STRUCTURED_OUTPUTS mode
-    patched_client = instructor.from_mistral(aclient, mode=mode, use_async=True)
+    patched_client = instructor.from_mistral(aclient, mode=mode, async_client=True)
 
     # Test extracting structured data
     response = await patched_client.chat.completions.create(
@@ -81,7 +81,7 @@ def test_mistral_single_user_sync(client, model, mode):
 @pytest.mark.parametrize("model", models)
 async def test_mistral_single_user_async(aclient, model, mode):
     # Apply instructor patch with the specified mode
-    patched_client = instructor.from_mistral(aclient, mode=mode, use_async=True)
+    patched_client = instructor.from_mistral(aclient, mode=mode, async_client=True)
 
     # Test extracting a single User object asynchronously
     response = await patched_client.chat.completions.create(

@@ -36,7 +36,7 @@ def test_mistral_retry_validation(client, model, mode):
 @pytest.mark.parametrize("model", models)
 @pytest.mark.asyncio
 async def test_mistral_retry_validation_async(client, model, mode):
-    client = instructor.from_mistral(client, mode=mode, use_async=True)
+    client = instructor.from_mistral(client, mode=mode, async_client=True)
     response = await client.chat.completions.create(
         model=model,
         messages=[

@@ -7,10 +7,10 @@ from typing import Any, TypeVar
 from instructor.mode import Mode
 from instructor.utils import combine_system_messages, extract_system_messages
 
-from .base import ResponseHandler
+from .base import ResponseHandler, SupportsModelJsonSchema
 from .registry import register
 
-T = TypeVar("T")
+T = TypeVar("T", bound=SupportsModelJsonSchema)
 
 
 class AnthropicHandler(ResponseHandler):
@@ -117,6 +117,76 @@ class AnthropicHandler(ResponseHandler):
                 new_kwargs["system"], [{"type": "text", "text": json_schema_message}]
             )
         return response_model, new_kwargs
+
+    # ------------------------------------------------------------------
+    # Response-side parsing
+    # ------------------------------------------------------------------
+    def parse_response(
+        self,
+        mode: Mode,
+        raw_completion: Any,
+        *,
+        response_model: type[T] | None,
+        stream: bool,
+        validation_context: dict[str, Any] | None,
+        strict: bool | None,
+    ) -> Any | None:
+        """Convert Anthropic raw response into the caller-facing object.
+
+        For the initial refactor we simply rely on the existing
+        ``from_response`` helpers shipped with Instructor. But by placing the
+        logic here we decouple provider-specific quirks from the enormous
+        ``process_response`` file.
+        """
+
+        # If no structured output was requested fall back to legacy path
+        if response_model is None:
+            return None  # Delegate to legacy parser
+
+        # Import deferred to avoid unnecessary heavy imports at module load
+        from instructor.dsl.iterable import IterableBase
+        from instructor.dsl.parallel import ParallelBase
+        from instructor.dsl.partial import PartialBase
+        from instructor.dsl.simple_type import AdapterBase
+
+        # Streaming iterable / partial handling --------------------------------
+        if (
+            stream
+            and isinstance(response_model, type)
+            and issubclass(response_model, (IterableBase, PartialBase))
+        ):
+            # For now reuse the async/sync helpers already attached to the model
+            if hasattr(response_model, "from_streaming_response"):
+                model = response_model.from_streaming_response(  # type: ignore[attr-defined]
+                    raw_completion, mode=mode
+                )
+                return model
+
+        # Fallback to the generic ``from_response`` method --------------------
+        model = response_model.from_response(  # type: ignore[attr-defined]
+            raw_completion,
+            validation_context=validation_context,
+            strict=strict,
+            mode=mode,
+        )
+
+        # Harmonise return types (copied from legacy logic) -------------------
+        if isinstance(model, IterableBase):
+            return [task for task in model.tasks]  # type: ignore[attr-defined]
+
+        if isinstance(response_model, ParallelBase):
+            return model
+
+        if isinstance(model, AdapterBase):
+            return model.content
+
+        # Attach raw completion for caller inspection
+        try:
+            model._raw_response = raw_completion  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+        return model
 
 # Register a singleton instance with the central registry
 register(AnthropicHandler())

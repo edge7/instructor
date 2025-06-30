@@ -247,6 +247,7 @@ nav:
     - Multimodal : 'concepts/multimodal.md'
     - Patching: 'concepts/patching.md'
     - Hooks: 'concepts/hooks.md'
+    - Handler Architecture: 'concepts/handler_architecture.md'
     - Types: 'concepts/types.md'
     - TypedDicts: 'concepts/typeddicts.md'
     - Validators: "concepts/reask_validation.md"

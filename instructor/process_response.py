@@ -83,6 +83,21 @@ async def process_response_async(
     logger.debug(
         f"Instructor Raw Response: {response}",
     )
+
+    # Try new handler-based response parsing first
+    handler = get_handler(mode)
+    if handler is not None:
+        parsed = handler.parse_response(
+            mode,
+            response,
+            response_model=response_model,  # type: ignore[arg-type]
+            stream=stream,
+            validation_context=validation_context,
+            strict=strict,
+        )
+        if parsed is not None:
+            return parsed  # type: ignore[return-value]
+
     if response_model is None:
         return response
 
@@ -119,6 +134,7 @@ async def process_response_async(
         return model.content
 
     model._raw_response = response
+
     return model
 
 
@@ -156,6 +172,20 @@ def process_response(
     logger.debug(
         f"Instructor Raw Response: {response}",
     )
+
+    # Try new handler-based response parsing first
+    handler = get_handler(mode)
+    if handler is not None:
+        parsed = handler.parse_response(
+            mode,
+            response,
+            response_model=response_model,  # type: ignore[arg-type]
+            stream=stream,
+            validation_context=validation_context,
+            strict=strict,
+        )
+        if parsed is not None:
+            return parsed  # type: ignore[return-value]
 
     if response_model is None:
         logger.debug("No response model, returning response as is")
@@ -1133,7 +1163,7 @@ def handle_response_model(
     # ------------------------------------------------------------------
     handler = get_handler(mode)
     if handler is not None:
-        response_model, new_kwargs = handler.prepare_request(  # type: ignore[arg-type]
+        response_model, new_kwargs = handler.prepare_request(
             mode, response_model, new_kwargs
         )
 
@@ -1199,6 +1229,14 @@ def handle_response_model(
     }
 
     if mode in mode_handlers:
+        import warnings
+        warnings.warn(
+            "process_response: Falling back to legacy mode handler mapping. "
+            "This path is deprecated and will be removed in a future release. "
+            "Please migrate to the new ResponseHandler architecture.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         response_model, new_kwargs = mode_handlers[mode](response_model, new_kwargs)
     else:
         raise ValueError(f"Invalid patch mode: {mode}")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import openai
+import openai  # type: ignore
 import inspect
 from functools import partial
 import instructor

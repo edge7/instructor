@@ -727,6 +727,15 @@ def from_openai(
     mode: instructor.Mode = instructor.Mode.TOOLS,
     **kwargs: Any,
 ) -> Instructor | AsyncInstructor:
+    # Try to use the new provider system first
+    try:
+        from instructor.providers.client_openai import from_openai as provider_from_openai
+        return provider_from_openai(client, mode, **kwargs)
+    except ImportError:
+        # Fallback to the original implementation if provider system is not available
+        pass
+    
+    # Original implementation for backward compatibility
     if hasattr(client, "base_url"):
         provider = get_provider(str(client.base_url))
     else:

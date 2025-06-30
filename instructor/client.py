@@ -727,6 +727,38 @@ def from_openai(
     mode: instructor.Mode = instructor.Mode.TOOLS,
     **kwargs: Any,
 ) -> Instructor | AsyncInstructor:
+    """Return an :class:`Instructor` wrapper for *client*.
+
+    The implementation is now delegated to the *providers* abstraction while
+    preserving the public API.  Importing inside the function avoids a hard
+    dependency and potential circular imports.
+    """
+    try:
+        from providers.client_openai import OpenAIProvider  # type: ignore  # noqa: WPS433
+
+        return OpenAIProvider.from_client(client=client, mode=mode, **kwargs)
+    except ModuleNotFoundError:
+        # If the *providers* package is not available fall back to the original
+        # implementation to remain fully backwards-compatible when users do not
+        # vendor the new code.  The original logic has been extracted into the
+        # helper _legacy_from_openai defined just below.
+        return _legacy_from_openai(client=client, mode=mode, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Legacy implementation (kept verbatim to guarantee backwards compatibility)
+# ---------------------------------------------------------------------------
+
+def _legacy_from_openai(
+    client: openai.OpenAI | openai.AsyncOpenAI,
+    mode: instructor.Mode = instructor.Mode.TOOLS,
+    **kwargs: Any,
+) -> Instructor | AsyncInstructor:
+    # The body below is an exact copy of the original *from_openai* logic prior
+    # to the provider refactor.  Keeping it around ensures we do not introduce
+    # accidental breaking changes for users who might import *instructor.client*
+    # directly without the new providers package.
+
     if hasattr(client, "base_url"):
         provider = get_provider(str(client.base_url))
     else:

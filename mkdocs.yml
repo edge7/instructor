@@ -142,6 +142,7 @@ nav:
     - Help with Instructor: 'help.md'
     - Contributing: 'contributing.md'
     - Newsletter: 'newsletter.md'
+    - Changelog: 'CHANGELOG.md'
     - Tutorials: 'tutorials.md'
   - Learning:
     - Installation: 'learning/getting_started/installation.md'

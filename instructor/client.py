@@ -23,14 +23,28 @@ try:
 except ModuleNotFoundError:  # pragma: no cover – optional dependency
     openai = None  # type: ignore  # pylint: disable=invalid-name
 
-    # Fallback placeholder so type annotations continue to work at runtime.
-    ChatCompletionMessageParam = Any  # type: ignore  # noqa: N816,E401
+    # ------------------------------------------------------------------
+    # Create *type* placeholders so that our later type annotations remain
+    # syntactically valid when the real library is missing.
+    # ------------------------------------------------------------------
+
+    class _ChatCompletionMessageParam(dict):  # noqa: D401
+        """Fallback version emulating OpenAI SDK's message param dict."""
+
+    ChatCompletionMessageParam = _ChatCompletionMessageParam  # type: ignore  # noqa: N816
 
 
 try:
     from tenacity import AsyncRetrying, Retrying  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover – optional dependency
-    AsyncRetrying = Retrying = Any  # type: ignore  # noqa: N816,E401,TYP
+    class _DummyRetrying:  # noqa: D401
+        """Lightweight stand-in for *tenacity* retrying classes."""
+
+    class _DummyAsyncRetrying:  # noqa: D401
+        pass
+
+    Retrying = _DummyRetrying  # type: ignore  # noqa: N816
+    AsyncRetrying = _DummyAsyncRetrying  # type: ignore  # noqa: N816
 
 
 try:

@@ -110,6 +110,13 @@ def test_provider_path(monkeypatch):
 
     assert isinstance(inst, type(expected))
 
+    # Ensure basic call path works
+    result = inst.create(
+        response_model=None,
+        messages=[{"role": "user", "content": "hi"}],
+    )
+    assert isinstance(result, dict) and result["status"] == "ok"
+
 
 def test_legacy_fallback(monkeypatch):
     """Import failure of provider triggers legacy fallback code path."""
@@ -129,3 +136,10 @@ def test_legacy_fallback(monkeypatch):
         from instructor.client import Instructor, AsyncInstructor  # pylint: disable=import-error
 
         assert isinstance(inst, (Instructor, AsyncInstructor))
+
+        # Basic functionality
+        result = inst.create(
+            response_model=None,
+            messages=[{"role": "user", "content": "hi"}],
+        )
+        assert isinstance(result, dict) and result["status"] == "ok"

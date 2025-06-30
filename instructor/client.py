@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-import openai  # type: ignore
-import inspect
 from functools import partial
-import instructor
-from .utils import Provider, get_provider
-from openai.types.chat import ChatCompletionMessageParam
+import inspect
 from typing import (
     TypeVar,
     Callable,
@@ -16,13 +12,41 @@ from typing import (
     get_origin,
     get_args,
 )
-from tenacity import (
-    AsyncRetrying,
-    Retrying,
-)
+
+# ---------------------------------------------------------------------------
+# Optional heavy dependencies ------------------------------------------------
+# ---------------------------------------------------------------------------
+
+try:
+    import openai  # type: ignore
+    from openai.types.chat import ChatCompletionMessageParam  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover – optional dependency
+    openai = None  # type: ignore  # pylint: disable=invalid-name
+
+    # Fallback placeholder so type annotations continue to work at runtime.
+    ChatCompletionMessageParam = Any  # type: ignore  # noqa: N816,E401
+
+
+try:
+    from tenacity import AsyncRetrying, Retrying  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover – optional dependency
+    AsyncRetrying = Retrying = Any  # type: ignore  # noqa: N816,E401,TYP
+
+
+try:
+    from pydantic import BaseModel  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover – optional dependency
+    class BaseModel:  # type: ignore
+        """Fallback minimal BaseModel placeholder when *pydantic* is absent."""
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
+            pass
+
+
+import instructor
+from .utils import Provider, get_provider
 from collections.abc import Generator, Iterable, Awaitable, AsyncGenerator
 from typing_extensions import Self
-from pydantic import BaseModel
 from instructor.dsl.partial import Partial
 from instructor.hooks import Hooks, HookName
 
@@ -835,6 +859,13 @@ def _legacy_from_openai(
             provider=provider,
             **kwargs,
         )
+
+    # Fallback: unsupported client type.  We raise rather than returning None to
+    # avoid silent failures downstream.
+    raise TypeError(
+        "_legacy_from_openai expected an openai.OpenAI or openai.AsyncOpenAI client; "
+        f"got {type(client).__name__}."
+    )
 
 
 @overload

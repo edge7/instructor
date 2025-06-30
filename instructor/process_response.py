@@ -41,6 +41,10 @@ from instructor.utils import (
     update_genai_kwargs,
 )
 
+# New handler registry for request-side transformations
+import instructor.handlers as _instructor_handlers  # noqa: F401  # side-effect import
+from instructor.handlers.registry import get as get_handler
+
 logger = logging.getLogger("instructor")
 
 T_Model = TypeVar("T_Model", bound=BaseModel)
@@ -1123,6 +1127,41 @@ def handle_response_model(
         return handle_vertexai_parallel_tools(response_model, new_kwargs)
 
     response_model = prepare_response_model(response_model)
+
+    # ------------------------------------------------------------------
+    # New extensible handler mechanism (anthropic-only for now)
+    # ------------------------------------------------------------------
+    handler = get_handler(mode)
+    if handler is not None:
+        response_model, new_kwargs = handler.prepare_request(  # type: ignore[arg-type]
+            mode, response_model, new_kwargs
+        )
+
+        # After a handler runs we still apply generic multimedia conversions
+        if "messages" in new_kwargs:
+            new_kwargs["messages"] = convert_messages(
+                new_kwargs["messages"],
+                mode,
+                autodetect_images=autodetect_images,
+            )
+
+        if mode in {Mode.GENAI_TOOLS, Mode.GENAI_STRUCTURED_OUTPUTS}:
+            new_kwargs["contents"] = extract_genai_multimodal_content(
+                new_kwargs["contents"], autodetect_images
+            )
+
+        logger.debug(
+            f"Instructor Request (new handler): {mode.value=}, {response_model=}, {new_kwargs=}",
+            extra={
+                "mode": mode.value,
+                "response_model": (
+                    response_model.__name__ if response_model and hasattr(response_model, "__name__") else str(response_model)
+                ),
+                "new_kwargs": new_kwargs,
+            },
+        )
+
+        return response_model, new_kwargs
 
     mode_handlers = {  # type: ignore
         Mode.FUNCTIONS: handle_functions,

@@ -1,34 +1,29 @@
 # promptframe
 
-> DataFrame + LLM = Easy structured extraction
+DataFrame + LLM = Easy structured extraction
 
-**One file. Four dependencies. Zero complexity.**
-
-## Install
+## Install & Run
 
 ```bash
 pip install pandas pydantic instructor jinja2
 export OPENAI_API_KEY=sk-...
+python example.py
 ```
 
-## Use
+## Usage
 
 ```python
-import pandas as pd
-from pydantic import BaseModel
 from promptframe import PromptFrame
+from pydantic import BaseModel
 
-# Define what you want to extract
-class Analysis(BaseModel):
-    sentiment: str
-    summary: str
+class Sentiment(BaseModel):
+    feeling: str      # positive, negative, neutral
+    confidence: float # 0.0 to 1.0
 
-# Your data
-df = pd.DataFrame({"review": ["Great product!", "Terrible service."]})
+df = pd.DataFrame({"review": ["Great product!", "Terrible."]})
 
-# Process with LLM
 result = (PromptFrame(df)
-          .map_prompt("analysis", Analysis)
+          .map_prompt("sentiment", Sentiment)
           .to_df())
 
 print(result)
@@ -36,56 +31,20 @@ print(result)
 
 **Output:**
 ```
-       review analysis.sentiment  analysis.summary
-0  Great product!        positive   Customer loves it
-1  Terrible service.     negative   Poor service quality
-```
-
-## That's it!
-
-### What happens automatically:
-1. **Auto-template**: Wraps your columns in XML like `<review>{{ review }}</review>`
-2. **LLM call**: Sends to OpenAI with your Pydantic schema
-3. **Add columns**: Results become new DataFrame columns with dotted names
-
-### Custom template (optional):
-```python
-pf.map_prompt("analysis", Analysis, template="Rate this review: {{ review }}")
-```
-
-### Chain operations:
-```python
-result = (PromptFrame(df)
-          .map_prompt("sentiment", SentimentSchema)
-          .map_prompt("topics", TopicSchema)
-          .to_df())
+       review sentiment.feeling  sentiment.confidence
+0  Great product!      positive                  0.95
+1      Terrible.      negative                  0.90
 ```
 
 ## Files
 
-- `src/promptframe/promptframe.py` - Everything (80 lines)
-- `src/promptframe/__init__.py` - Exports (3 lines)
-- `simple_demo.py` - Example
+- `src/promptframe/promptframe.py` - Everything (110 lines)
+- `example.py` - Demo
 
-## Dependencies
+## How it works
 
-- `pandas` - DataFrames
-- `pydantic` - Schemas  
-- `instructor` - Structured LLM calls
-- `jinja2` - Templates
-
-## Why Simple?
-
-The previous version had 746 lines across 8 files with async processing, batching, progress bars, custom exceptions, and complex error handling.
-
-This version has 83 lines across 2 files and just works.
-
-**Simple is better than complex.**
-
-## Run Example
-
-```bash
-python simple_demo.py
-```
+1. Auto-generates XML template: `<review>{{ review }}</review>`
+2. Sends to OpenAI with your Pydantic schema
+3. Adds new columns with structured results
 
 Done.

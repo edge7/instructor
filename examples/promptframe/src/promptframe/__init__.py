@@ -1,13 +1,10 @@
 """
-promptframe - A lightweight bridge between Pandas rows and instructor-powered, 
-Jinja-templated, structured-LLM extraction.
+promptframe - Simple DataFrame + LLM processing
 
-A pandas-native, type-safe, retry-aware, vectorised path for adding LLM-derived 
-features to tabular data.
+A lightweight bridge between Pandas rows and instructor-powered structured LLM extraction.
 """
 
-from .core import PromptFrame
-from .types import PromptFrameError
+from .promptframe import PromptFrame
 
-__version__ = "0.1.0"
-__all__ = ["PromptFrame", "PromptFrameError"]
+__version__ = "0.2.0"
+__all__ = ["PromptFrame"]

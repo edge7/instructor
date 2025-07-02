@@ -2,12 +2,12 @@
 
 > DataFrame + LLM = Easy structured extraction
 
-**One file. Four dependencies. Zero complexity.**
+**One file. Three dependencies. Zero complexity.**
 
 ## Install
 
 ```bash
-pip install pandas pydantic instructor jinja2
+pip install pandas pydantic instructor
 export OPENAI_API_KEY=sk-...
 ```
 
@@ -64,7 +64,7 @@ result = (PromptFrame(df)
 ## Files
 
 - `src/promptframe/promptframe.py` - Everything (80 lines)
-- `src/promptframe/__init__.py` - Exports (3 lines)
+- `src/promptframe/__init__.py` - Exports
 - `simple_demo.py` - Example
 
 ## Dependencies
@@ -73,19 +73,5 @@ result = (PromptFrame(df)
 - `pydantic` - Schemas  
 - `instructor` - Structured LLM calls
 - `jinja2` - Templates
-
-## Why Simple?
-
-The previous version had 746 lines across 8 files with async processing, batching, progress bars, custom exceptions, and complex error handling.
-
-This version has 83 lines across 2 files and just works.
-
-**Simple is better than complex.**
-
-## Run Example
-
-```bash
-python simple_demo.py
-```
 
 Done.

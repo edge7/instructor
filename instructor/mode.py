@@ -65,6 +65,9 @@ class Mode(enum.Enum):
     BEDROCK_JSON = "bedrock_json"
     PERPLEXITY_JSON = "perplexity_json"
     OPENROUTER_STRUCTURED_OUTPUTS = "openrouter_structured_outputs"
+    
+    # Claude Code CLI modes
+    CLAUDE_CODE_JSON = "claude_code_json"
 
     # Classification helpers
     @classmethod
@@ -109,6 +112,7 @@ class Mode(enum.Enum):
             cls.PERPLEXITY_JSON,
             cls.OPENROUTER_STRUCTURED_OUTPUTS,
             cls.MISTRAL_STRUCTURED_OUTPUTS,
+            cls.CLAUDE_CODE_JSON,
         }
 
     @classmethod

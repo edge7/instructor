@@ -59,6 +59,7 @@ class Provider(Enum):
     BEDROCK = "bedrock"
     PERPLEXITY = "perplexity"
     OPENROUTER = "openrouter"
+    CLAUDE_CODE = "claude_code"
 
 
 def get_provider(base_url: str) -> Provider:

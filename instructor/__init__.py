@@ -23,6 +23,7 @@ from .client import (
     Provider,
 )
 from .auto_client import from_provider
+from .client_claude_code import from_claude_code
 
 __all__ = [
     "Instructor",
@@ -31,6 +32,7 @@ __all__ = [
     "from_openai",
     "from_litellm",
     "from_provider",
+    "from_claude_code",
     "AsyncInstructor",
     "Provider",
     "OpenAISchema",

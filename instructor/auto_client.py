@@ -25,6 +25,7 @@ supported_providers = [
     "vertexai",
     "generative-ai",
     "ollama",
+    "claude_code",
 ]
 
 
@@ -441,6 +442,27 @@ def from_provider(
             raise ConfigurationError(
                 "The openai package is required to use the Ollama provider. "
                 "Install it with `pip install openai`."
+            ) from None
+
+    elif provider == "claude_code":
+        try:
+            from instructor import from_claude_code
+            
+            # Extract CLI-specific parameters
+            cli_path = kwargs.pop("cli_path", "claude")
+            
+            return from_claude_code(
+                cli_path=cli_path,
+                model=model_name,
+                async_client=async_client,
+                **kwargs,
+            )
+        except ImportError:
+            from instructor.exceptions import ConfigurationError
+            
+            raise ConfigurationError(
+                "Claude Code CLI integration failed. "
+                "Please ensure Claude Code CLI is installed and available in PATH."
             ) from None
 
     else:

@@ -25,13 +25,10 @@ class Haiku(BaseModel):
 async def main() -> None:
     provider = ClaudeCodeProvider()
 
-    haiku: Haiku = cast(
-        Haiku,
-        await provider.acreate(
-            prompt="Write a haiku about foo.py",
-            response_model=Haiku,
-        ),
-    )
+    haiku: Haiku = await provider.acreate(
+        prompt="Write a haiku about foo.py",
+        response_model=Haiku,
+    )  # type: ignore[assignment]
     print(haiku.model_dump_json(indent=2))
 
 

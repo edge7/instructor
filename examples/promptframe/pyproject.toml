@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "promptframe"
+version = "0.1.0"
+description = "A lightweight bridge between Pandas rows and instructor-powered, Jinja-templated, structured-LLM extraction"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Jason Liu", email = "jason@jxnl.co"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=2.2.0",
+    "instructor>=1.0.0",
+    "pydantic>=2.0.0",
+    "jinja2>=3.0.0",
+    "tqdm>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/jxnl/instructor"
+Repository = "https://github.com/jxnl/instructor"
+Documentation = "https://python.useinstructor.com"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

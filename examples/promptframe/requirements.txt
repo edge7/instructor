@@ -2,3 +2,5 @@ pandas
 pydantic
 instructor
 jinja2
+openai
+tqdm

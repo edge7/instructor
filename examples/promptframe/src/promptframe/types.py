@@ -27,5 +27,6 @@ class LLMError(PromptFrameError):
 
 # Type aliases for clarity
 TemplateType = Union[str, Callable[[pd.Series], str]]
+OptionalTemplateType = Union[str, Callable[[pd.Series], str], None]
 TemplateKwargsType = Union[Dict[str, Any], Callable[[pd.Series], Dict[str, Any]], None]
 SchemaType = Type[BaseModel]

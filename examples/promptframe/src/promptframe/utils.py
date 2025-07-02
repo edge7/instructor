@@ -5,6 +5,38 @@ from typing import Any, Dict, List
 from pydantic import BaseModel
 
 
+def generate_default_xml_template(df: pd.DataFrame) -> str:
+    """
+    Generate a default XML template that wraps each column in XML tags.
+    
+    Args:
+        df: DataFrame to generate template for
+        
+    Returns:
+        Jinja template string with XML-wrapped columns
+        
+    Example:
+        For a DataFrame with columns ['name', 'age', 'email'], generates:
+        ```
+        This is a row of a database, please extract the following information:
+        <name>{{ name }}</name>
+        <age>{{ age }}</age>
+        <email>{{ email }}</email>
+        ```
+    """
+    if df.empty:
+        return "This is a row of a database, please extract the information."
+    
+    xml_tags = []
+    for column in df.columns:
+        # Sanitize column names for XML (replace spaces/special chars with underscores)
+        xml_tag = column.replace(' ', '_').replace('-', '_').replace('.', '_')
+        xml_tags.append(f"<{xml_tag}>{{{{ {column} }}}}</{xml_tag}>")
+    
+    template = "This is a row of a database, please extract the following information:\n" + "\n".join(xml_tags)
+    return template
+
+
 def expand_pydantic_to_columns(
     model_instances: List[BaseModel], 
     prefix: str

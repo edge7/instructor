@@ -2,12 +2,17 @@
 
 import asyncio
 import pandas as pd
-from typing import Optional, Type, Any, List
-from pydantic import BaseModel
+from typing import Optional, Type, Any, List, Union
 
 from .engine import AsyncEngine
 from .types import TemplateType, TemplateKwargsType, PromptFrameError
-from .utils import expand_pydantic_to_columns, merge_columns_to_dataframe
+from .utils import expand_pydantic_to_columns, merge_columns_to_dataframe, generate_default_xml_template
+
+try:
+    from pydantic import BaseModel
+except ImportError:
+    class BaseModel:  # type: ignore
+        pass
 
 
 class PromptFrame:
@@ -38,8 +43,8 @@ class PromptFrame:
     def map_prompt(
         self,
         name: str,
-        template: TemplateType,
         schema: Type[BaseModel],
+        template: Optional[TemplateType] = None,
         *,
         llm_model: str = "openai/gpt-4o",
         template_kwargs: TemplateKwargsType = None,
@@ -52,8 +57,8 @@ class PromptFrame:
         
         Args:
             name: Prefix for new columns (e.g., "analysis" -> "analysis.summary")
-            template: Jinja template string or callable that takes a row and returns a string
             schema: Pydantic model class for structured output validation
+            template: Jinja template string or callable (if None, uses default XML template)
             llm_model: Model identifier (default: "openai/gpt-4o")
             template_kwargs: Additional variables for template rendering (dict or callable)
             batch_size: Number of rows to batch together (1 = individual calls)
@@ -65,16 +70,33 @@ class PromptFrame:
             
         Raises:
             PromptFrameError: If processing fails
+            
+        Note:
+            If no template is provided, a default XML template will be generated that wraps
+            each column in XML tags like:
+            ```
+            This is a row of a database, please extract the following information:
+            <column_name>{{ column_name }}</column_name>
+            ```
         """
         # Validate inputs
         if not isinstance(name, str) or not name:
             raise ValueError("name must be a non-empty string")
         
-        if not issubclass(schema, BaseModel):
+        try:
+            if not issubclass(schema, BaseModel):
+                raise ValueError("schema must be a Pydantic BaseModel subclass")
+        except (TypeError, NameError):
             raise ValueError("schema must be a Pydantic BaseModel subclass")
         
         if self.df.empty:
             return self
+        
+        # Use default XML template if none provided
+        if template is None:
+            template = generate_default_xml_template(self.df)
+            if progress:
+                print(f"Using default XML template for columns: {list(self.df.columns)}")
         
         try:
             # Run async processing

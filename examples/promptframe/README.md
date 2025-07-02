@@ -9,6 +9,7 @@
 * **One-liner** to enrich DataFrames with LLM insights.
 * **Structured outputs** validated by Pydantic via `instructor`.
 * **Retry-safe** (Tenacity via Instructor) & **async by default**.
+* **Default XML templates** - No need to write templates for simple extraction!
 * Auto-expands nested fields (`analysis_summary`, …).
 
 ---
@@ -38,24 +39,23 @@ class Analysis(BaseModel):
 # 2. data
 df = pd.DataFrame({"text": ["I love this.", "I hate that."]})
 
-# 3. wrap & map
-pf = PromptFrame(df)  # uses client=instructor.from_provider("openai/gpt-4o")
+# 3. wrap & map (NO TEMPLATE NEEDED!)
+pf = PromptFrame(df)
 
 pf.map_prompt(
     name="analysis",
-    template="""
-      Text: {{ text }}
-      
-      Analyze this text and provide:
-      - A brief summary
-      - The sentiment (positive, negative, neutral)
-      - Relevant tags
-    """,
     schema=Analysis,
+    # No template parameter - uses automatic XML template!
 )
 
 enriched = pf.to_df()
 print(enriched.head())
+```
+
+**Auto-generated template:**
+```xml
+This is a row of a database, please extract the following information:
+<text>{{ text }}</text>
 ```
 
 **Output:**
@@ -74,8 +74,8 @@ PromptFrame(df, *, client=None, max_concurrency=32)
 
 .map_prompt(
     name,                     # prefix for new columns
-    template,                 # Jinja string or callable(row) -> str
     schema,                   # Pydantic model
+    template=None,           # Jinja string, callable, or None (auto XML)
     llm_model="openai/gpt-4o",
     template_kwargs=None,     # extra vars for Jinja
     batch_size=8,            # batch requests for efficiency
@@ -84,13 +84,47 @@ PromptFrame(df, *, client=None, max_concurrency=32)
 )
 ```
 
+**Template Options:**
+- `None` (default): Auto-generates XML template wrapping each column
+- `str`: Custom Jinja2 template
+- `callable`: Function that takes a row and returns a string
+
 Columns are written as `{name}.{field}` for flat models, or dotted paths for nested models.
 
 ---
 
 ## 📋 Examples
 
-### Advanced Template with Variables
+### No Template Needed (Default XML)
+
+```python
+from pydantic import BaseModel
+
+class PersonInfo(BaseModel):
+    full_name: str
+    age_group: str  # child, teen, adult, senior
+    profession: str
+
+df = pd.DataFrame({
+    "name": ["Alice Johnson", "Bob Smith"],
+    "age": [28, 45],
+    "job": ["Engineer", "Manager"],
+    "city": ["SF", "NYC"]
+})
+
+# Just specify name and schema - template auto-generated!
+pf = PromptFrame(df)
+pf.map_prompt(name="person", schema=PersonInfo)
+
+# Auto-generated template:
+# This is a row of a database, please extract the following information:
+# <name>{{ name }}</name>
+# <age>{{ age }}</age>
+# <job>{{ job }}</job>
+# <city>{{ city }}</city>
+```
+
+### Custom Template (When You Need More Control)
 
 ```python
 from pydantic import BaseModel, Field
@@ -100,7 +134,7 @@ class ProductAnalysis(BaseModel):
     price_range: str = Field(description="Price range: low, medium, high")
     recommended: bool = Field(description="Whether to recommend this product")
 
-# Add context via template_kwargs
+# Custom template with context
 pf.map_prompt(
     name="product_analysis",
     template="""
@@ -140,13 +174,28 @@ pf.map_prompt(
 )
 ```
 
+### Column Name Sanitization
+
+```python
+# DataFrame with challenging column names
+df = pd.DataFrame({
+    "user name": ["Alice", "Bob"],           # spaces
+    "email-address": ["a@test.com", "b@test.com"],  # hyphens  
+    "signup.date": ["2023-01-15", "2023-02-20"],    # dots
+})
+
+# Auto-generated template sanitizes column names:
+# <user_name>{{ user name }}</user_name>
+# <email_address>{{ email-address }}</email_address>  
+# <signup_date>{{ signup.date }}</signup_date>
+```
+
 ### Batching for Efficiency
 
 ```python
 # Process 16 rows at once (good for simple tasks)
 pf.map_prompt(
     name="batch_analysis",
-    template="Categorize this text: {{ text }}",
     schema=Category,
     batch_size=16  # Faster but less reliable for complex tasks
 )
@@ -158,7 +207,7 @@ pf.map_prompt(
 pf = PromptFrame(df)
 
 try:
-    pf.map_prompt(name="analysis", template="{{text}}", schema=Analysis)
+    pf.map_prompt(name="analysis", schema=Analysis)
 except Exception as e:
     print(f"Processing failed: {e}")
 
@@ -177,7 +226,6 @@ if pf.has_errors():
 | ----------------------------- | -------------------------------- |
 | `OPENAI_API_KEY`              | required                         |
 | `PROMPTFRAME_MAX_CONCURRENCY` | override default (32)            |
-| `PROMPTFRAME_CACHE`           | `sqlite:///pf_cache.db` (future) |
 
 ---
 
@@ -206,23 +254,26 @@ pf = PromptFrame(df, client=client)
 
 ```python
 (PromptFrame(df)
- .map_prompt("sentiment", sentiment_template, SentimentSchema)
- .map_prompt("topics", topic_template, TopicSchema, 
+ .map_prompt("sentiment", SentimentSchema)  # No template needed
+ .map_prompt("topics", TopicSchema, 
             template_kwargs=lambda row: {"sentiment": row["sentiment.label"]})
- .map_prompt("summary", summary_template, SummarySchema)
+ .map_prompt("summary", SummarySchema)
  .to_df())
 ```
 
-### Progress Tracking
+### Template Comparison
 
 ```python
-# Custom progress tracking
-pf.map_prompt(
-    name="analysis",
-    template=template,
-    schema=Schema,
-    progress=True,  # Shows tqdm progress bar
-    batch_size=1   # More granular progress updates
+# Method 1: Default XML template (zero-setup)
+pf1 = PromptFrame(df)
+pf1.map_prompt(name="auto", schema=Schema)
+
+# Method 2: Custom template (full control)  
+pf2 = PromptFrame(df)
+pf2.map_prompt(
+    name="custom", 
+    template="Custom prompt: {{ column }}",
+    schema=Schema
 )
 ```
 
@@ -234,24 +285,36 @@ pf.map_prompt(
 git clone your-org/promptframe
 cd promptframe
 pip install -e .
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 pytest -v
 ```
 
-Run the demo:
+Run the demos:
 
 ```bash
-python src/promptframe/demo_quickstart.py
+python src/promptframe/demo_quickstart.py          # Original demos
+python demo_default_template.py                    # New default template demos
 ```
 
 ---
 
 ## 🚀 Performance Tips
 
-1. **Batching**: Use `batch_size > 1` for simple, similar tasks
-2. **Concurrency**: Adjust `max_concurrency` based on your API limits
-3. **Templates**: Reuse template strings for automatic caching
-4. **Progress**: Disable `progress=False` for faster processing in production
+1. **Default templates**: Use auto-generated XML templates for quick prototyping
+2. **Batching**: Use `batch_size > 1` for simple, similar tasks
+3. **Concurrency**: Adjust `max_concurrency` based on your API limits
+4. **Templates**: Reuse template strings for automatic caching
+5. **Progress**: Disable `progress=False` for faster processing in production
+
+---
+
+## 💡 When to Use Each Template Type
+
+| Template Type | Best For | Example |
+|---------------|----------|---------|
+| **None (XML)** | Quick extraction, prototyping | `map_prompt("data", Schema)` |
+| **Custom String** | Specific formatting, context | Complex prompts with instructions |
+| **Callable** | Dynamic prompts, row-dependent logic | Different prompts per content type |
 
 ---
 

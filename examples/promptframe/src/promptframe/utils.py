@@ -1,7 +1,8 @@
 """Utility functions for promptframe."""
 
-import pandas as pd
 from typing import Any, Dict, List
+
+import pandas as pd
 from pydantic import BaseModel
 
 
@@ -30,10 +31,13 @@ def generate_default_xml_template(df: pd.DataFrame) -> str:
     xml_tags = []
     for column in df.columns:
         # Sanitize column names for XML (replace spaces/special chars with underscores)
-        xml_tag = column.replace(' ', '_').replace('-', '_').replace('.', '_')
+        xml_tag = column.replace(" ", "_").replace("-", "_").replace(".", "_")
         xml_tags.append(f"<{xml_tag}>{{{{ {column} }}}}</{xml_tag}>")
     
-    template = "This is a row of a database, please extract the following information:\n" + "\n".join(xml_tags)
+    template = (
+        "This is a row of a database, please extract the following information:\n"
+        + "\n".join(xml_tags)
+    )
     return template
 
 
@@ -56,7 +60,7 @@ def expand_pydantic_to_columns(
     
     # Get field names from the first instance
     first_instance = model_instances[0]
-    model_dict = first_instance.model_dump()
+    first_instance.model_dump()
     
     columns = {}
     

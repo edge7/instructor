@@ -842,3 +842,226 @@ def from_litellm(
             mode=mode,
             **kwargs,
         )
+
+
+class CachedInstructor(Instructor):
+    """Instructor client with integrated caching support.
+    
+    This class wraps the standard Instructor client to provide automatic
+    caching of LLM responses using pluggable cache backends.
+    
+    Features:
+    - Automatic schema-aware cache invalidation
+    - Graceful error handling with fallback to uncached operation
+    - Support for all Instructor create methods
+    - Configurable cache backends (LRU, Redis, Disk)
+    
+    Example:
+        from instructor.cache import LRUCache
+        cache = LRUCache(maxsize=1000)
+        client = CachedInstructor(cache=cache, ...)
+    """
+    
+    def __init__(self, cache, *args, **kwargs):
+        """Initialize CachedInstructor.
+        
+        Args:
+            cache: Cache backend instance (LRUCache, RedisCache, DiskCache, etc.)
+            *args: Arguments passed to parent Instructor class
+            **kwargs: Keyword arguments passed to parent Instructor class
+        """
+        super().__init__(*args, **kwargs)
+        self.cache = cache
+        self.original_create_fn = self.create_fn
+        self.create_fn = self._cached_create_fn
+    
+    def _cached_create_fn(self, **kwargs):
+        """Intercept create calls to add caching."""
+        import inspect
+        import hashlib
+        import json
+        from pydantic import BaseModel
+        
+        response_model = kwargs.get('response_model')
+        
+        # Only cache if we have a Pydantic response model
+        if response_model is None or not (
+            inspect.isclass(response_model) and 
+            issubclass(response_model, BaseModel)
+        ):
+            return self.original_create_fn(**kwargs)
+        
+        # Generate cache key
+        cache_key = self._generate_cache_key(kwargs, response_model)
+        
+        # Try cache first
+        try:
+            cached_result = self.cache.get(cache_key, response_model)
+            if cached_result is not None:
+                return cached_result
+        except Exception as e:
+            # Log but don't fail on cache errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Cache read error: {e}")
+        
+        # Cache miss - call original function
+        result = self.original_create_fn(**kwargs)
+        
+        # Cache the result
+        try:
+            self.cache.set(cache_key, result)
+        except Exception as e:
+            # Log but don't fail on cache errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Cache write error: {e}")
+        
+        return result
+    
+    def _generate_cache_key(self, kwargs: dict, model_class) -> str:
+        """Generate cache key with schema versioning."""
+        import hashlib
+        import json
+        
+        # Extract cacheable parameters
+        messages = kwargs.get('messages', [])
+        model = kwargs.get('model', self.default_model)
+        temperature = kwargs.get('temperature')
+        max_tokens = kwargs.get('max_tokens')
+        
+        # Create deterministic hash of input
+        cache_data = {
+            'messages': messages,
+            'model': model,
+            'mode': str(self.mode),
+            'temperature': temperature,
+            'max_tokens': max_tokens,
+        }
+        
+        # Include model schema in key for automatic invalidation
+        try:
+            schema_hash = hashlib.md5(
+                json.dumps(model_class.model_json_schema(), sort_keys=True).encode()
+            ).hexdigest()[:8]
+        except Exception:
+            # Fallback if schema serialization fails
+            schema_hash = hashlib.md5(model_class.__name__.encode()).hexdigest()[:8]
+        
+        data_hash = hashlib.md5(
+            json.dumps(cache_data, sort_keys=True, default=str).encode()
+        ).hexdigest()[:8]
+        
+        return f"instructor:{schema_hash}:{data_hash}"
+
+
+class CachedAsyncInstructor(AsyncInstructor):
+    """Async Instructor client with integrated caching support.
+    
+    This class wraps the AsyncInstructor client to provide automatic
+    caching of LLM responses using pluggable cache backends with async support.
+    
+    Features:
+    - Automatic schema-aware cache invalidation
+    - Async cache operations
+    - Graceful error handling with fallback to uncached operation
+    - Support for all AsyncInstructor create methods
+    - Configurable cache backends (LRU, Redis, Disk)
+    
+    Example:
+        from instructor.cache import RedisCache
+        cache = RedisCache(redis_url="redis://localhost")
+        client = CachedAsyncInstructor(cache=cache, ...)
+    """
+    
+    def __init__(self, cache, *args, **kwargs):
+        """Initialize CachedAsyncInstructor.
+        
+        Args:
+            cache: Cache backend instance (LRUCache, RedisCache, DiskCache, etc.)
+            *args: Arguments passed to parent AsyncInstructor class
+            **kwargs: Keyword arguments passed to parent AsyncInstructor class
+        """
+        super().__init__(*args, **kwargs)
+        self.cache = cache
+        self.original_create_fn = self.create_fn
+        self.create_fn = self._cached_create_fn
+    
+    async def _cached_create_fn(self, **kwargs):
+        """Intercept create calls to add async caching."""
+        import inspect
+        import hashlib
+        import json
+        from pydantic import BaseModel
+        
+        response_model = kwargs.get('response_model')
+        
+        # Only cache if we have a Pydantic response model
+        if response_model is None or not (
+            inspect.isclass(response_model) and 
+            issubclass(response_model, BaseModel)
+        ):
+            return await self.original_create_fn(**kwargs)
+        
+        # Generate cache key
+        cache_key = self._generate_cache_key(kwargs, response_model)
+        
+        # Try cache first
+        try:
+            cached_result = await self.cache.aget(cache_key, response_model)
+            if cached_result is not None:
+                return cached_result
+        except Exception as e:
+            # Log but don't fail on cache errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Async cache read error: {e}")
+        
+        # Cache miss - call original function
+        result = await self.original_create_fn(**kwargs)
+        
+        # Cache the result
+        try:
+            await self.cache.aset(cache_key, result)
+        except Exception as e:
+            # Log but don't fail on cache errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Async cache write error: {e}")
+        
+        return result
+    
+    def _generate_cache_key(self, kwargs: dict, model_class) -> str:
+        """Generate cache key with schema versioning."""
+        import hashlib
+        import json
+        
+        # Extract cacheable parameters
+        messages = kwargs.get('messages', [])
+        model = kwargs.get('model', self.default_model)
+        temperature = kwargs.get('temperature')
+        max_tokens = kwargs.get('max_tokens')
+        
+        # Create deterministic hash of input
+        cache_data = {
+            'messages': messages,
+            'model': model,
+            'mode': str(self.mode),
+            'temperature': temperature,
+            'max_tokens': max_tokens,
+        }
+        
+        # Include model schema in key for automatic invalidation
+        try:
+            schema_hash = hashlib.md5(
+                json.dumps(model_class.model_json_schema(), sort_keys=True).encode()
+            ).hexdigest()[:8]
+        except Exception:
+            # Fallback if schema serialization fails
+            schema_hash = hashlib.md5(model_class.__name__.encode()).hexdigest()[:8]
+        
+        data_hash = hashlib.md5(
+            json.dumps(cache_data, sort_keys=True, default=str).encode()
+        ).hexdigest()[:8]
+        
+        return f"instructor:{schema_hash}:{data_hash}"

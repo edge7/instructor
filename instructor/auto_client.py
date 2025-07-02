@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import Any, Union, Literal, overload
-from instructor.client import AsyncInstructor, Instructor
+from typing import Any, Union, Literal, overload, Optional
+from instructor.client import AsyncInstructor, Instructor, CachedInstructor, CachedAsyncInstructor
 import instructor
 from instructor.models import KnownModelName
 
 # Type alias for the return type
-InstructorType = Union[Instructor, AsyncInstructor]
+InstructorType = Union[Instructor, AsyncInstructor, CachedInstructor, CachedAsyncInstructor]
 
 
 # List of supported providers
@@ -32,36 +32,49 @@ supported_providers = [
 def from_provider(
     model: KnownModelName,
     async_client: Literal[True] = True,
+    mode: Union[instructor.Mode, None] = None,
+    cache: Optional[Any] = None,
     **kwargs: Any,
-) -> AsyncInstructor: ...
+) -> AsyncInstructor | CachedAsyncInstructor: ...
 
 
 @overload
 def from_provider(
     model: KnownModelName,
     async_client: Literal[False] = False,
+    mode: Union[instructor.Mode, None] = None,
+    cache: Optional[Any] = None,
     **kwargs: Any,
-) -> Instructor: ...
+) -> Instructor | CachedInstructor: ...
 
 
 @overload
 def from_provider(
-    model: str, async_client: Literal[True] = True, **kwargs: Any
-) -> AsyncInstructor: ...
+    model: str, 
+    async_client: Literal[True] = True, 
+    mode: Union[instructor.Mode, None] = None,
+    cache: Optional[Any] = None,
+    **kwargs: Any
+) -> AsyncInstructor | CachedAsyncInstructor: ...
 
 
 @overload
 def from_provider(
-    model: str, async_client: Literal[False] = False, **kwargs: Any
-) -> Instructor: ...
+    model: str, 
+    async_client: Literal[False] = False, 
+    mode: Union[instructor.Mode, None] = None,
+    cache: Optional[Any] = None,
+    **kwargs: Any
+) -> Instructor | CachedInstructor: ...
 
 
 def from_provider(
     model: Union[str, KnownModelName],  # noqa: UP007
     async_client: bool = False,
     mode: Union[instructor.Mode, None] = None,  # noqa: ARG001, UP007
+    cache: Optional[Any] = None,
     **kwargs: Any,
-) -> Union[Instructor, AsyncInstructor]:  # noqa: UP007
+) -> Union[Instructor, AsyncInstructor, CachedInstructor, CachedAsyncInstructor]:  # noqa: UP007
     """Create an Instructor client from a model string.
 
     Args:
@@ -70,10 +83,12 @@ def from_provider(
         async_client: Whether to return an async client
         mode: Override the default mode for the provider. If not specified, uses the
               recommended default mode for each provider.
+        cache: Optional cache backend for response caching. Can be LRUCache, 
+               RedisCache, DiskCache, or any object implementing the CacheBackend interface.
         **kwargs: Additional arguments passed to the client constructor
 
     Returns:
-        Instructor or AsyncInstructor instance
+        Instructor, AsyncInstructor, CachedInstructor, or CachedAsyncInstructor instance
 
     Raises:
         ValueError: If provider is not supported or model string is invalid
@@ -81,15 +96,50 @@ def from_provider(
 
     Examples:
         >>> import instructor
-        >>> # Sync clients
+        >>> from instructor.cache import LRUCache, RedisCache, DiskCache
+        >>> 
+        >>> # Basic usage without cache
         >>> client = instructor.from_provider("openai/gpt-4")
-        >>> client = instructor.from_provider("azure_openai/gpt-4")
-        >>> client = instructor.from_provider("anthropic/claude-3-sonnet")
-        >>> client = instructor.from_provider("ollama/llama2")
-        >>> # Async clients
-        >>> async_client = instructor.from_provider("openai/gpt-4", async_client=True)
-        >>> async_client = instructor.from_provider("azure_openai/gpt-4", async_client=True)
+        >>> 
+        >>> # With LRU cache
+        >>> cache = LRUCache(maxsize=1000)
+        >>> client = instructor.from_provider("openai/gpt-4", cache=cache)
+        >>> 
+        >>> # With Redis cache
+        >>> cache = RedisCache(redis_url="redis://localhost", ttl=3600)
+        >>> client = instructor.from_provider("openai/gpt-4", cache=cache)
+        >>> 
+        >>> # With disk cache
+        >>> cache = DiskCache(cache_dir="./cache", ttl=3600)
+        >>> client = instructor.from_provider("openai/gpt-4", cache=cache)
+        >>> 
+        >>> # Async clients with cache
+        >>> async_client = instructor.from_provider("openai/gpt-4", async_client=True, cache=cache)
     """
+    
+    def _create_cached_client(base_client, cache_backend, is_async=False):
+        """Helper function to create cached client from base client."""
+        if is_async:
+            return CachedAsyncInstructor(
+                cache=cache_backend,
+                client=base_client.client,
+                create=base_client.create_fn,
+                mode=base_client.mode,
+                provider=base_client.provider,
+                hooks=base_client.hooks,
+                **kwargs
+            )
+        else:
+            return CachedInstructor(
+                cache=cache_backend,
+                client=base_client.client,
+                create=base_client.create_fn,
+                mode=base_client.mode,
+                provider=base_client.provider,
+                hooks=base_client.hooks,
+                **kwargs
+            )
+    
     try:
         provider, model_name = model.split("/", 1)
     except ValueError:
@@ -100,13 +150,16 @@ def from_provider(
             '(e.g. "openai/gpt-4" or "anthropic/claude-3-sonnet")'
         ) from None
 
+    # Create base client first, then wrap with cache if provided
+    base_client = None
+
     if provider == "openai":
         try:
             import openai
             from instructor import from_openai
 
             client = openai.AsyncOpenAI() if async_client else openai.OpenAI()
-            return from_openai(
+            base_client = from_openai(
                 client,
                 model=model_name,
                 mode=mode if mode else instructor.Mode.TOOLS,
@@ -158,7 +211,7 @@ def from_provider(
                     azure_endpoint=azure_endpoint,
                 )
             )
-            return from_openai(
+            base_client = from_openai(
                 client,
                 model=model_name,
                 mode=mode if mode else instructor.Mode.TOOLS,
@@ -181,7 +234,7 @@ def from_provider(
                 anthropic.AsyncAnthropic() if async_client else anthropic.Anthropic()
             )
             max_tokens = kwargs.pop("max_tokens", 4096)
-            return from_anthropic(
+            base_client = from_anthropic(
                 client,
                 model=model_name,
                 mode=mode if mode else instructor.Mode.ANTHROPIC_TOOLS,
@@ -207,9 +260,9 @@ def from_provider(
                 **kwargs,
             )  # type: ignore
             if async_client:
-                return from_genai(client, use_async=True, model=model_name, **kwargs)  # type: ignore
+                base_client = from_genai(client, use_async=True, model=model_name, **kwargs)  # type: ignore
             else:
-                return from_genai(client, model=model_name, **kwargs)  # type: ignore
+                base_client = from_genai(client, model=model_name, **kwargs)  # type: ignore
         except ImportError:
             import_err = ImportError(
                 "The google-genai package is required to use the Google provider. "
@@ -232,13 +285,13 @@ def from_provider(
                 )
 
             if async_client:
-                return from_mistral(client, model=model_name, use_async=True, **kwargs)
+                base_client = from_mistral(client, model=model_name, use_async=True, **kwargs)
             else:
-                return from_mistral(client, model=model_name, **kwargs)
+                base_client = from_mistral(client, model=model_name, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The mistralai package is required to use the Mistral provider. "
-                "Install it with `pip install mistralai`."
+                "Install with: pip install mistralai`."
             )
             raise import_err from None
 
@@ -248,7 +301,7 @@ def from_provider(
             from instructor import from_cohere
 
             client = cohere.AsyncClient() if async_client else cohere.Client()
-            return from_cohere(client, **kwargs)
+            base_client = from_cohere(client, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The cohere package is required to use the Cohere provider. "
@@ -281,7 +334,7 @@ def from_provider(
                     api_key=api_key, base_url="https://api.perplexity.ai"
                 )
             )
-            return from_perplexity(client, model=model_name, **kwargs)
+            base_client = from_perplexity(client, model=model_name, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The openai package is required to use the Perplexity provider. "
@@ -295,7 +348,7 @@ def from_provider(
             from instructor import from_groq
 
             client = groq.AsyncGroq() if async_client else groq.Groq()
-            return from_groq(client, model=model_name, **kwargs)
+            base_client = from_groq(client, model=model_name, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The groq package is required to use the Groq provider. "
@@ -309,7 +362,7 @@ def from_provider(
             from instructor import from_writer
 
             client = AsyncWriter() if async_client else Writer()
-            return from_writer(client, model=model_name, **kwargs)
+            base_client = from_writer(client, model=model_name, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The writerai package is required to use the Writer provider. "
@@ -323,7 +376,7 @@ def from_provider(
             from instructor import from_bedrock
 
             client = boto3.client("bedrock-runtime")
-            return from_bedrock(client, **kwargs)
+            base_client = from_bedrock(client, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The boto3 package is required to use the AWS Bedrock provider. "
@@ -337,7 +390,7 @@ def from_provider(
             from instructor import from_cerebras
 
             client = AsyncCerebras() if async_client else Cerebras()
-            return from_cerebras(client, model=model_name, **kwargs)
+            base_client = from_cerebras(client, model=model_name, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The cerebras package is required to use the Cerebras provider. "
@@ -351,7 +404,7 @@ def from_provider(
             from instructor import from_fireworks
 
             client = AsyncFireworks() if async_client else Fireworks()
-            return from_fireworks(client, model=model_name, **kwargs)
+            base_client = from_fireworks(client, model=model_name, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The fireworks-ai package is required to use the Fireworks provider. "
@@ -365,7 +418,7 @@ def from_provider(
             from instructor import from_vertexai
 
             client = gm.GenerativeModel(model_name=model_name)
-            return from_vertexai(client, use_async=async_client, **kwargs)
+            base_client = from_vertexai(client, use_async=async_client, **kwargs)
         except ImportError:
             import_err = ImportError(
                 "The google-cloud-aiplatform package is required to use the VertexAI provider. "
@@ -380,9 +433,9 @@ def from_provider(
 
             client = GenerativeModel(model_name=model_name)
             if async_client:
-                return from_gemini(client, use_async=True, **kwargs)  # type: ignore
+                base_client = from_gemini(client, use_async=True, **kwargs)  # type: ignore
             else:
-                return from_gemini(client, **kwargs)  # type: ignore
+                base_client = from_gemini(client, **kwargs)  # type: ignore
         except ImportError:
             import_err = ImportError(
                 "The google-generativeai package is required to use the Google GenAI provider. "
@@ -429,7 +482,7 @@ def from_provider(
                 instructor.Mode.TOOLS if supports_tools else instructor.Mode.JSON
             )
 
-            return from_openai(
+            base_client = from_openai(
                 client,
                 model=model_name,
                 mode=mode if mode else default_mode,
@@ -450,3 +503,25 @@ def from_provider(
             f"Unsupported provider: {provider}. "
             f"Supported providers are: {supported_providers}"
         )
+
+    # If cache is provided, wrap the base client with caching
+    if cache is not None:
+        # Validate cache backend
+        try:
+            from instructor.cache.base import CacheBackend
+            if not hasattr(cache, 'get') or not hasattr(cache, 'set'):
+                raise ValueError(
+                    f"Cache backend must implement get() and set() methods. "
+                    f"Got {type(cache)}. Use LRUCache, RedisCache, DiskCache, or implement CacheBackend interface."
+                )
+        except ImportError:
+            # If CacheBackend not available, do basic duck-typing check
+            if not hasattr(cache, 'get') or not hasattr(cache, 'set'):
+                raise ValueError(
+                    f"Cache backend must implement get() and set() methods. "
+                    f"Got {type(cache)}."
+                )
+        
+        return _create_cached_client(base_client, cache, async_client)
+    
+    return base_client

@@ -1,17 +1,18 @@
 """
 PromptFrame - Simple DataFrame + LLM processing
 
-One file, minimal dependencies, easy to understand.
+One file, minimal dependencies, easy to understand, fast async processing.
 """
 
+import asyncio
 import pandas as pd
-from typing import Type, Optional, Any
+from typing import Type, Optional
 from pydantic import BaseModel
 import instructor
 
 
 class PromptFrame:
-    """Simple DataFrame wrapper for LLM processing."""
+    """Simple DataFrame wrapper for LLM processing with async support."""
     
     def __init__(self, df: pd.DataFrame):
         self.df = df.copy()
@@ -21,7 +22,8 @@ class PromptFrame:
         self, 
         name: str, 
         schema: Type[BaseModel], 
-        template: Optional[str] = None
+        template: Optional[str] = None,
+        max_concurrency: int = 10
     ) -> 'PromptFrame':
         """
         Apply LLM to each row and add structured results as new columns.
@@ -30,6 +32,7 @@ class PromptFrame:
             name: Column prefix for results (e.g. "analysis" -> "analysis.summary")
             schema: Pydantic model defining the output structure
             template: Custom template, or None for auto XML template
+            max_concurrency: Maximum concurrent API calls
             
         Returns:
             Self for chaining
@@ -38,20 +41,36 @@ class PromptFrame:
         if template is None:
             template = self._make_xml_template()
         
-        # Process each row
-        results = []
-        for _, row in self.df.iterrows():
-            prompt = self._render_template(template, row)
-            result = self.client.chat.completions.create(
-                model="openai/gpt-4o",
-                response_model=schema,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            results.append(result)
+        # Run async processing
+        results = asyncio.run(self._process_async(template, schema, max_concurrency))
         
         # Add results as new columns
         self._add_results(results, name)
         return self
+    
+    async def _process_async(
+        self, 
+        template: str, 
+        schema: Type[BaseModel], 
+        max_concurrency: int
+    ) -> list:
+        """Process all rows concurrently with controlled concurrency."""
+        semaphore = asyncio.Semaphore(max_concurrency)
+        
+        async def process_row(row):
+            async with semaphore:
+                prompt = self._render_template(template, row)
+                return await self.client.chat.completions.create(
+                    model="openai/gpt-4o",
+                    response_model=schema,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+        
+        # Create tasks for all rows
+        tasks = [process_row(row) for _, row in self.df.iterrows()]
+        
+        # Run all tasks concurrently
+        return await asyncio.gather(*tasks)
     
     def _make_xml_template(self) -> str:
         """Generate XML template for all columns."""
@@ -100,12 +119,13 @@ if __name__ == "__main__":
     
     # Example data
     df = pd.DataFrame({
-        "text": ["I love this product!", "This is terrible."]
+        "text": ["I love this product!", "This is terrible.", "It's okay I guess."]
     })
     
     # Process (requires OPENAI_API_KEY)
+    # This will now make 3 concurrent API calls instead of 3 sequential ones!
     result = (PromptFrame(df)
-              .map_prompt("analysis", Analysis)
+              .map_prompt("analysis", Analysis, max_concurrency=5)
               .to_df())
     
     print(result)

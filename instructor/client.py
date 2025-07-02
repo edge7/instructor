@@ -704,6 +704,15 @@ def from_openai(
     pass
 
 
+@overload
+def from_openai(
+    client: Any,  # Together client instance
+    mode: instructor.Mode = instructor.Mode.TOOLS,
+    **kwargs: Any,
+) -> Instructor | AsyncInstructor:
+    pass
+
+
 def map_chat_completion_to_response(messages, client, *args, **kwargs) -> Any:
     return client.responses.create(
         *args,
@@ -723,10 +732,38 @@ async def async_map_chat_completion_to_response(
 
 
 def from_openai(
-    client: openai.OpenAI | openai.AsyncOpenAI,
+    client: openai.OpenAI | openai.AsyncOpenAI | Any,
     mode: instructor.Mode = instructor.Mode.TOOLS,
     **kwargs: Any,
 ) -> Instructor | AsyncInstructor:
+    # Handle Together client instances
+    try:
+        from together import Together, AsyncTogether
+        
+        if isinstance(client, Together):
+            # Extract configuration from Together client
+            api_key = getattr(client, 'api_key', None)
+            base_url = getattr(client, 'base_url', 'https://api.together.xyz/v1')
+            
+            # Create OpenAI client with Together configuration
+            client = openai.OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+            )
+        elif isinstance(client, AsyncTogether):
+            # Extract configuration from AsyncTogether client
+            api_key = getattr(client, 'api_key', None)
+            base_url = getattr(client, 'base_url', 'https://api.together.xyz/v1')
+            
+            # Create AsyncOpenAI client with Together configuration
+            client = openai.AsyncOpenAI(
+                api_key=api_key,
+                base_url=base_url,
+            )
+    except ImportError:
+        # together package not available, continue with original logic
+        pass
+    
     if hasattr(client, "base_url"):
         provider = get_provider(str(client.base_url))
     else:

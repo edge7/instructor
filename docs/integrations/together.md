@@ -45,6 +45,67 @@ The good news is that Together employs the same OpenAI client, and its models su
 
     If you want to try this out for yourself check out the [Together AI](https://www.together.ai/) website. You can get started [here](http://api.together.ai/).
 
+## Installation
+
+To use Together's Python client, install it alongside instructor:
+
+```bash
+pip install instructor together
+```
+
+Alternatively, you can use the OpenAI client approach which only requires:
+
+```bash
+pip install instructor
+```
+
+## Using Together's Python Client (Recommended)
+
+You can now use Together's official Python client directly with Instructor:
+
+```python
+import os
+from together import Together
+from pydantic import BaseModel
+import instructor
+
+# Create Together client
+client = Together(api_key=os.environ["TOGETHER_API_KEY"])
+
+# Patch with instructor
+client = instructor.from_openai(client, mode=instructor.Mode.TOOLS)
+
+# Define your response model
+class UserExtract(BaseModel):
+    name: str
+    age: int
+
+# Make structured request
+user: UserExtract = client.chat.completions.create(
+    model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+    response_model=UserExtract,
+    messages=[
+        {"role": "user", "content": "Extract jason is 25 years old"},
+    ],
+)
+
+assert isinstance(user, UserExtract), "Should be instance of UserExtract"
+assert user.name.lower() == "jason"
+assert user.age == 25
+
+print(user.model_dump_json(indent=2))
+"""
+{
+  "name": "jason",
+  "age": 25
+}
+"""
+```
+
+## Using OpenAI Client (Alternative)
+
+You can also use the OpenAI client with Together's base URL:
+
 ```python
 import os
 import openai
@@ -56,17 +117,14 @@ client = openai.OpenAI(
     api_key=os.environ["TOGETHER_API_KEY"],
 )
 
-
 # By default, the patch function will patch the ChatCompletion.create and ChatCompletion.create methods to support the response_model parameter
 client = instructor.from_openai(client, mode=instructor.Mode.TOOLS)
-
 
 # Now, we can use the response_model parameter using only a base model
 # rather than having to use the OpenAISchema class
 class UserExtract(BaseModel):
     name: str
     age: int
-
 
 user: UserExtract = client.chat.completions.create(
     model="mistralai/Mixtral-8x7B-Instruct-v0.1",
@@ -87,10 +145,6 @@ print(user.model_dump_json(indent=2))
   "age": 25
 }
 """
-{
-    "name": "Jason",
-    "age": 25,
-}
 ```
 
 You can find more information about Together's function calling support [here](https://docs.together.ai/docs/function-calling).

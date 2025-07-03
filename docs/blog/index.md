@@ -15,6 +15,7 @@ If you want to get updates on new features and tips on how to use Instructor, yo
 7. [Fine-tuning and Distillation in AI Models](posts/distilation-part1.md)
 8. [Enhancing OpenAI Client Observability with LangSmith](posts/langsmith.md)
 9. [Logfire Integration with Pydantic](posts/logfire.md)
+10. [Search Result Content Blocks for Natural Citations](posts/anthropic-search-results.md)
 
 ## AI Development and Optimization
 

@@ -15,16 +15,26 @@ if TYPE_CHECKING or importlib.util.find_spec("openai") is not None:  # pragma: n
     # dependency installed.
     from openai.types.chat import ChatCompletion  # type: ignore
     from openai.types import CompletionUsage  # type: ignore
-    from openai.error import (
-        AuthenticationError as _OpenAIAuthError,  # type: ignore
-        BadRequestError as _OpenAIBadRequest,  # type: ignore
-        RateLimitError as _OpenAIRateLimit,  # type: ignore
-        APIConnectionError as _OpenAIConnError,  # type: ignore
-        APITimeoutError as _OpenAITimeoutError,  # type: ignore
-        InternalServerError as _OpenAIServerError,  # type: ignore
-        ServiceUnavailableError as _OpenAIUnavailableError,  # type: ignore
-        OpenAIError as _OpenAIError,  # type: ignore
-    )  # type: ignore
+
+    # Import error classes – fallback to stub classes if an import fails for
+    # any reason to keep type checkers happy without forcing the dependency at
+    # runtime.
+    try:
+        from openai.error import (  # type: ignore
+            AuthenticationError as _OpenAIAuthError,  # type: ignore
+            BadRequestError as _OpenAIBadRequest,  # type: ignore
+            RateLimitError as _OpenAIRateLimit,  # type: ignore
+            APIConnectionError as _OpenAIConnError,  # type: ignore
+            APITimeoutError as _OpenAITimeoutError,  # type: ignore
+            InternalServerError as _OpenAIServerError,  # type: ignore
+            ServiceUnavailableError as _OpenAIUnavailableError,  # type: ignore
+            OpenAIError as _OpenAIError,  # type: ignore
+        )
+    except Exception:  # pragma: no cover
+        class _StubError(Exception):
+            """Fallback stub for missing OpenAI error classes."""
+
+        _OpenAIAuthError = _OpenAIBadRequest = _OpenAIRateLimit = _OpenAIConnError = _OpenAITimeoutError = _OpenAIServerError = _OpenAIUnavailableError = _OpenAIError = _StubError  # type: ignore
 else:  # pragma: no cover
     openai = None  # type: ignore
 
@@ -207,7 +217,7 @@ def from_xai(
 
     raw_create = client.chat.completions.create  # type: ignore[attr-defined]
 
-    def _safe_create(*args: Any, **kw: Any):  # noqa: D401 – simple wrapper
+    def _safe_create(*args: Any, **kw: Any) -> Any:  # noqa: D401 – simple wrapper
         """Delegate to the original create but normalize xAI API errors."""
 
         # If the caller explicitly sets an unsupported model id we can catch
@@ -221,6 +231,14 @@ def from_xai(
         try:
             return raw_create(*args, **kw)
         except (_OpenAIBadRequest) as exc:  # type: ignore[name-defined]
+            # Token limit / model not found / invalid tool invocation etc.
+            exc_msg = str(exc)
+            if "maximum context length" in exc_msg or "token" in exc_msg:
+                raise ProviderError("xAI", "Token limit exceeded for model context window.") from exc
+            if "model" in exc_msg and "not found" in exc_msg:
+                raise ProviderError("xAI", "Unsupported or unknown xAI model id.") from exc
+            if "Invalid function call" in exc_msg or "Invalid tool" in exc_msg:
+                raise ProviderError("xAI", "Invalid function/tool call format or arguments.") from exc
             raise ProviderError("xAI", f"Bad request: {exc}") from exc
         except (_OpenAIAuthError) as exc:  # type: ignore[name-defined]
             raise ProviderError(

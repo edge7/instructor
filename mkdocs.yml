@@ -181,6 +181,7 @@ nav:
     - Fireworks: 'integrations/fireworks.md'
     - Together: 'integrations/together.md'
     - Anyscale: 'integrations/anyscale.md'
+    - xAI: 'integrations/xai.md'
     
     # Other commercial providers
     - Cerebras: 'integrations/cerebras.md'
@@ -363,6 +364,7 @@ plugins:
          hub/together.md: integrations/together.md
          hub/vertex.md: integrations/vertex.md
          hub/vertexai.md: integrations/vertex.md  # Handle old vertexai.md references
+         hub/xai.md: integrations/xai.md
          # Legacy hub/clients/ redirects
          'hub/clients/google.md': 'integrations/google.md'
          'hub/clients/litellm.md': 'integrations/litellm.md'
@@ -383,6 +385,7 @@ plugins:
          'hub/clients/together.md': 'integrations/together.md'
          'hub/clients/vertex.md': 'integrations/vertex.md'
          'hub/clients/vertexai.md': 'integrations/vertex.md'
+         'hub/clients/xai.md': 'integrations/xai.md'
          # Example redirects
          'hub/action_items.md': 'examples/action_items.md'
          'hub/batch_classification_langsmith.md': 'examples/batch_classification_langsmith.md'

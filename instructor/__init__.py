@@ -106,8 +106,9 @@ if importlib.util.find_spec("writerai") is not None:
 
 if importlib.util.find_spec("openai") is not None:
     from .client_perplexity import from_perplexity
+    from .client_xai import from_xai
 
-    __all__ += ["from_perplexity"]
+    __all__ += ["from_perplexity", "from_xai"]
 
 if (
     importlib.util.find_spec("google")

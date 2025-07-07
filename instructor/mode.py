@@ -66,6 +66,10 @@ class Mode(enum.Enum):
     PERPLEXITY_JSON = "perplexity_json"
     OPENROUTER_STRUCTURED_OUTPUTS = "openrouter_structured_outputs"
 
+    # xAI modes
+    XAI_TOOLS = "xai_tools"
+    XAI_JSON = "xai_json"
+
     # Classification helpers
     @classmethod
     def tool_modes(cls) -> set["Mode"]:
@@ -88,6 +92,7 @@ class Mode(enum.Enum):
             cls.BEDROCK_TOOLS,
             cls.OPENROUTER_STRUCTURED_OUTPUTS,
             cls.MISTRAL_STRUCTURED_OUTPUTS,
+            cls.XAI_TOOLS,
         }
 
     @classmethod
@@ -109,6 +114,7 @@ class Mode(enum.Enum):
             cls.PERPLEXITY_JSON,
             cls.OPENROUTER_STRUCTURED_OUTPUTS,
             cls.MISTRAL_STRUCTURED_OUTPUTS,
+            cls.XAI_JSON,
         }
 
     @classmethod

@@ -25,6 +25,7 @@ supported_providers = [
     "vertexai",
     "generative-ai",
     "ollama",
+    "xai",
 ]
 
 
@@ -440,6 +441,50 @@ def from_provider(
 
             raise ConfigurationError(
                 "The openai package is required to use the Ollama provider. "
+                "Install it with `pip install openai`."
+            ) from None
+
+    elif provider == "xai":
+        try:
+            import openai
+            from instructor import from_xai
+            import os
+
+            # Get API key from environment or kwargs
+            api_key = kwargs.pop("api_key", os.environ.get("XAI_API_KEY"))
+            
+            if not api_key:
+                from instructor.exceptions import ConfigurationError
+                
+                raise ConfigurationError(
+                    "XAI_API_KEY is not set. "
+                    "Set it with `export XAI_API_KEY=<your-api-key>` or pass it as kwarg api_key=<your-api-key>"
+                )
+
+            # Create OpenAI-compatible client pointing to xAI's API
+            client = (
+                openai.AsyncOpenAI(
+                    api_key=api_key, 
+                    base_url="https://api.x.ai/v1"
+                )
+                if async_client
+                else openai.OpenAI(
+                    api_key=api_key, 
+                    base_url="https://api.x.ai/v1"
+                )
+            )
+            
+            return from_xai(
+                client, 
+                model=model_name,
+                mode=mode if mode else instructor.Mode.XAI_TOOLS,
+                **kwargs
+            )
+        except ImportError:
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
+                "The openai package is required to use the xAI provider. "
                 "Install it with `pip install openai`."
             ) from None
 

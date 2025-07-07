@@ -137,7 +137,6 @@ def test_complete_output_no_exception(
     assert test_model_instance.data == "complete data"
 
 
-@pytest.mark.asyncio  # type: ignore[misc]
 @pytest.mark.parametrize(
     "mock_completion",
     [{"finish_reason": "length", "data_content": '{\n"data": "incomplete dat"\n}'}],

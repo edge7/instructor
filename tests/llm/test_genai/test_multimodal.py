@@ -184,32 +184,6 @@ def test_audio_from_url(client, model, mode):
     assert isinstance(response, AudioResponse)
     assert len(response.response) > 0
 
-
-@pytest.mark.parametrize("autodetect_images", [True, False])
-@pytest.mark.parametrize("model", models)
-@pytest.mark.parametrize("mode", modes)
-def test_autodetect_images_sync(client, model, mode, autodetect_images):
-    client = instructor.from_genai(client, mode=mode)
-
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "Return true if you are provided with an image that you can describe visually in your prompt. This does not include image paths or urls that might point to URLs. ",
-            },
-            {
-                "role": "user",
-                "content": [image_file],
-            },
-        ],
-        response_model=bool,
-        autodetect_images=autodetect_images,
-    )
-
-    assert autodetect_images == response
-
-
 @pytest.mark.asyncio()
 @pytest.mark.parametrize("autodetect_images", [True, False])
 @pytest.mark.parametrize("model", models)

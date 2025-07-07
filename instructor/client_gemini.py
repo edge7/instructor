@@ -1,7 +1,11 @@
 # type: ignore
 from __future__ import annotations
 
-from typing import Any, Literal, overload
+from typing import Any, Literal, overload, TypeVar
+import json
+from textwrap import dedent
+
+T = TypeVar("T")
 
 import google.generativeai as genai
 
@@ -70,3 +74,62 @@ def from_gemini(
         mode=mode,
         **kwargs,
     )
+
+
+def handle_gemini_json(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    if "model" in new_kwargs:
+        from instructor.exceptions import ConfigurationError
+
+        raise ConfigurationError(
+            "Gemini `model` must be set while patching the client, not passed as a parameter to the create method"
+        )
+
+    from .utils import update_gemini_kwargs
+
+    message = dedent(
+        f"""
+        As a genius expert, your task is to understand the content and provide
+        the parsed objects in json that match the following json_schema:\n
+        {json.dumps(response_model.model_json_schema(), indent=2, ensure_ascii=False)}
+
+        Make sure to return an instance of the JSON, not the schema itself
+        """
+    )
+
+    if new_kwargs["messages"][0]["role"] != "system":
+        new_kwargs["messages"].insert(0, {"role": "system", "content": message})
+    else:
+        new_kwargs["messages"][0]["content"] += f"\n\n{message}"
+
+    new_kwargs["generation_config"] = new_kwargs.get("generation_config", {}) | {
+        "response_mime_type": "application/json"
+    }
+
+    new_kwargs = update_gemini_kwargs(new_kwargs)
+    return response_model, new_kwargs
+
+
+def handle_gemini_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    if "model" in new_kwargs:
+        from instructor.exceptions import ConfigurationError
+
+        raise ConfigurationError(
+            "Gemini `model` must be set while patching the client, not passed as a parameter to the create method"
+        )
+
+    from .utils import update_gemini_kwargs
+
+    new_kwargs["tools"] = [response_model.gemini_schema]
+    new_kwargs["tool_config"] = {
+        "function_calling_config": {
+            "mode": "ANY",
+            "allowed_function_names": [response_model.__name__],
+        },
+    }
+
+    new_kwargs = update_gemini_kwargs(new_kwargs)
+    return response_model, new_kwargs

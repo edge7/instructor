@@ -73,3 +73,54 @@ def from_cohere(
             mode=mode,
             **kwargs,
         )
+
+
+def handle_cohere_modes(new_kwargs: dict[str, Any]) -> tuple[None, dict[str, Any]]:
+    messages = new_kwargs.pop("messages", [])
+    chat_history = []
+    for message in messages[:-1]:
+        chat_history.append(  # type: ignore
+            {
+                "role": message["role"],
+                "message": message["content"],
+            }
+        )
+    new_kwargs["message"] = messages[-1]["content"]
+    new_kwargs["chat_history"] = chat_history
+    if "model_name" in new_kwargs and "model" not in new_kwargs:
+        new_kwargs["model"] = new_kwargs.pop("model_name")
+    new_kwargs.pop("strict", None)
+    return None, new_kwargs
+
+
+def handle_cohere_json_schema(
+    response_model: type[T_Model], new_kwargs: dict[str, Any]
+) -> tuple[type[T_Model], dict[str, Any]]:
+    new_kwargs["response_format"] = {
+        "type": "json_object",
+        "schema": response_model.model_json_schema(),
+    }
+    _, new_kwargs = handle_cohere_modes(new_kwargs)
+
+    return response_model, new_kwargs
+
+
+def handle_cohere_tools(
+    response_model: type[T_Model], new_kwargs: dict[str, Any]
+) -> tuple[type[T_Model], dict[str, Any]]:
+    _, new_kwargs = handle_cohere_modes(new_kwargs)
+
+    instruction = f"""
+Extract a valid {response_model.__name__} object based on the chat history and the json schema below.
+{response_model.model_json_schema()}
+The JSON schema was obtained by running:
+```python
+schema = {response_model.__name__}.model_json_schema()
+```
+
+The output must be a valid JSON object that `{response_model.__name__}.model_validate_json()` can successfully parse.
+"""
+    new_kwargs["chat_history"] = [
+        {"role": "user", "message": instruction}
+    ] + new_kwargs["chat_history"]
+    return response_model, new_kwargs

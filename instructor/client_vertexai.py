@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Union, get_origin
+from typing import Any, Union, get_origin, TypeVar
+from collections.abc import Iterable
 
 from vertexai.preview.generative_models import ToolConfig  # type: ignore
 import vertexai.generative_models as gm  # type: ignore
@@ -8,6 +9,8 @@ from pydantic import BaseModel
 import instructor
 from instructor.dsl.parallel import get_types_array
 import jsonref
+
+T = TypeVar("T")
 
 
 def _create_gemini_json_schema(model: BaseModel):
@@ -193,3 +196,51 @@ def from_vertexai(
         mode=mode,
         **kwargs,
     )
+
+
+def handle_vertexai_parallel_tools(
+    response_model: type[Iterable[T]], new_kwargs: dict[str, Any]
+) -> tuple[VertexAIParallelBase, dict[str, Any]]:
+    if new_kwargs.get("stream", False):
+        from instructor.exceptions import ConfigurationError
+
+        raise ConfigurationError(
+            "stream=True is not supported when using VERTEXAI_PARALLEL_TOOLS mode"
+        )
+
+    from instructor.client_vertexai import vertexai_process_response
+
+    model_types = list(get_types_array(response_model))
+    contents, tools, tool_config = vertexai_process_response(new_kwargs, model_types)
+    new_kwargs["contents"] = contents
+    new_kwargs["tools"] = tools
+    new_kwargs["tool_config"] = tool_config
+
+    return VertexAIParallelModel(typehint=response_model), new_kwargs
+
+
+def handle_vertexai_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    from instructor.client_vertexai import vertexai_process_response
+
+    contents, tools, tool_config = vertexai_process_response(new_kwargs, response_model)
+
+    new_kwargs["contents"] = contents
+    new_kwargs["tools"] = tools
+    new_kwargs["tool_config"] = tool_config
+    return response_model, new_kwargs
+
+
+def handle_vertexai_json(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    from instructor.client_vertexai import vertexai_process_json_response
+
+    contents, generation_config = vertexai_process_json_response(
+        new_kwargs, response_model
+    )
+
+    new_kwargs["contents"] = contents
+    new_kwargs["generation_config"] = generation_config
+    return response_model, new_kwargs

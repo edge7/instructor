@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, overload
+from typing import Any, overload, TypeVar
+
+from .openai_utils import handle_openai_json_schema, handle_openai_tools
+
+T = TypeVar("T")
 
 import instructor
 from instructor.client import AsyncInstructor, Instructor
@@ -75,3 +79,23 @@ def from_fireworks(
             mode=mode,
             **kwargs,
         )
+
+
+def handle_fireworks_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    if "stream" not in new_kwargs:
+        new_kwargs["stream"] = False
+    response_model, new_kwargs = handle_openai_tools(
+        response_model,
+        new_kwargs,
+    )
+    return response_model, new_kwargs
+
+
+def handle_fireworks_json(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    if "stream" not in new_kwargs:
+        new_kwargs["stream"] = False
+    return handle_openai_json_schema(response_model, new_kwargs)

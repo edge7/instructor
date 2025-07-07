@@ -9,17 +9,30 @@ import importlib.util
 # hard-require `openai` at runtime unless the user actually calls
 # `from_xai`.
 if TYPE_CHECKING:  # pragma: no cover
-    # Type-only imports for static analysis / IDE support.
-    import openai  # type: ignore
-
-    # Type hints only – avoid runtime dependency requirements
-    from openai.types.chat import ChatCompletion  # type: ignore
-    from openai.types import CompletionUsage  # type: ignore
-
+    # `openai` may not be installed in all development environments. Guard
+    # these imports so static analysis tools still get symbols without
+    # requiring the runtime package.
     try:
-        from pydantic import BaseModel  # type: ignore  # noqa: F401 – used in docstring examples
-    except ImportError:  # pragma: no cover
-        BaseModel = object  # type: ignore
+        import openai  # type: ignore
+        from openai.types.chat import ChatCompletion  # type: ignore
+        from openai.types import CompletionUsage  # type: ignore
+    except ModuleNotFoundError:
+        from types import ModuleType
+
+        openai = ModuleType("openai")  # type: ignore
+
+        class _Stub:  # noqa: D401
+            """Fallback stub for missing attributes when openai isn't present."""
+
+        ChatCompletion = CompletionUsage = _Stub  # type: ignore
+
+    # Optional pydantic types for docstring examples / annotations.
+    try:
+        from pydantic import BaseModel  # type: ignore  # noqa: F401
+    except ModuleNotFoundError:
+        class BaseModel:  # type: ignore
+            """Minimal stub when *pydantic* is not available."""
+            pass
 
 # Runtime import for the actual OpenAI client (if installed). We do this
 # outside TYPE_CHECKING so production code can execute.

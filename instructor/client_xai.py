@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import overload, Any, TYPE_CHECKING
+from typing import overload, Any, TYPE_CHECKING, Sequence
 
 import importlib.util
 
@@ -14,10 +14,22 @@ else:  # pragma: no cover
     openai = None  # type: ignore
 
 import instructor
-from instructor.exceptions import ClientError, ModeError
+from instructor.exceptions import ClientError, ModeError, ProviderError
 
 __all__ = ["from_xai"]
 
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+# Officially documented xAI model prefixes. We keep this list minimal on
+# purpose – it is only meant to catch obvious mis-configurations (e.g. trying
+# to send an OpenAI model id to an xAI endpoint).
+# Update this tuple whenever xAI publishes new model families.
+_XAI_MODEL_PREFIXES: Sequence[str] = (
+    "grok",  # grok-beta, grok-3-beta, etc.
+    "x-ai/",  # vendor style e.g. "x-ai/grok-3-beta" used by some gateways
+)
 
 @overload
 def from_xai(
@@ -40,7 +52,7 @@ def from_xai(
     mode: instructor.Mode = instructor.Mode.TOOLS,
     **kwargs: Any,
 ) -> instructor.Instructor | instructor.AsyncInstructor:
-    """Wrap an xAI client with *Instructor*.
+    """Wrap an *xAI* client with *Instructor*.
 
     Parameters
     ----------
@@ -67,7 +79,8 @@ def from_xai(
         * ``Mode.TOOLS`` – enables function / tool calling for structured
           output.
 
-        Streaming is *not* yet implemented in this helper.
+        *Streaming* is **not** yet implemented in this helper – set
+        ``stream=False`` when calling ``create``.
     **kwargs
         Forwarded to :class:`~instructor.Instructor` or
         :class:`~instructor.AsyncInstructor`.
@@ -125,7 +138,43 @@ def from_xai(
             "Make sure to set `base_url='https://api.x.ai/v1'`."
         )
 
-    patched_create = instructor.patch(create=client.chat.completions.create, mode=mode)
+    # ---------------------------------------------------------------------
+    # 1.  Validate that the default / provided model looks like an xAI model
+    # ---------------------------------------------------------------------
+
+    model_in_kwargs: str | None = kwargs.get("default_model") or kwargs.get("model")
+    prefixes: tuple[str, ...] = tuple(_XAI_MODEL_PREFIXES)
+    if model_in_kwargs is not None and not model_in_kwargs.startswith(prefixes):
+        raise ClientError(
+            "The provided `model` does not look like an xAI Grok model. "
+            f"Got '{model_in_kwargs}'. Valid models start with one of: {', '.join(_XAI_MODEL_PREFIXES)}"
+        )
+
+    # ---------------------------------------------------------------------
+    # 2.  Wrap the low-level create call to convert xAI-specific API errors
+    #     into Instructor's ProviderError for consistent error handling.
+    # ---------------------------------------------------------------------
+
+    raw_create = client.chat.completions.create  # type: ignore[attr-defined]
+
+    def _safe_create(*args: Any, **kw: Any):  # noqa: D401 – simple wrapper
+        """Delegate to the original create but normalize xAI API errors."""
+
+        # If the caller explicitly sets an unsupported model id we can catch
+        # it early. Otherwise we let the server decide.
+        if "model" in kw and not kw["model"].startswith(prefixes):
+            raise ClientError(
+                f"Unsupported xAI model '{kw['model']}'. Models must start with one "
+                f"of: {', '.join(_XAI_MODEL_PREFIXES)}"
+            )
+
+        try:
+            return raw_create(*args, **kw)
+        except Exception as exc:  # broad except to avoid importing every subtype
+            # Normalize provider-specific exceptions
+            raise ProviderError("xAI", f"API error: {exc}") from exc
+
+    patched_create = instructor.patch(create=_safe_create, mode=mode)
 
     if isinstance(client, openai.OpenAI):  # type: ignore[attr-defined]
         return instructor.Instructor(

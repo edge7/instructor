@@ -11,9 +11,15 @@ import importlib.util
 if TYPE_CHECKING:  # pragma: no cover
     # Type-only imports for static analysis / IDE support.
     import openai  # type: ignore
+
+    # Type hints only – avoid runtime dependency requirements
     from openai.types.chat import ChatCompletion  # type: ignore
     from openai.types import CompletionUsage  # type: ignore
-    from pydantic import BaseModel  # type: ignore # noqa: F401 – used in docstring examples
+
+    try:
+        from pydantic import BaseModel  # type: ignore  # noqa: F401 – used in docstring examples
+    except ImportError:  # pragma: no cover
+        BaseModel = object  # type: ignore
 
 # Runtime import for the actual OpenAI client (if installed). We do this
 # outside TYPE_CHECKING so production code can execute.

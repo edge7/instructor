@@ -10,6 +10,17 @@ import importlib.util
 # `from_xai`.
 if TYPE_CHECKING or importlib.util.find_spec("openai") is not None:  # pragma: no cover
     import openai  # type: ignore
+    # Strictly for type checking / editor support. These imports are cheap
+    # and only executed when type checking or when the user already has the
+    # dependency installed.
+    from openai.types.chat import ChatCompletion  # type: ignore
+    from openai.types import CompletionUsage  # type: ignore
+    from openai.error import (
+        AuthenticationError as _OpenAIAuthError,  # type: ignore
+        BadRequestError as _OpenAIBadRequest,  # type: ignore
+        RateLimitError as _OpenAIRateLimit,  # type: ignore
+        OpenAIError as _OpenAIError,  # type: ignore
+    )  # type: ignore
 else:  # pragma: no cover
     openai = None  # type: ignore
 
@@ -92,6 +103,29 @@ def from_xai(
         model response into the supplied ``response_model`` when you call
         ``.chat.completions.create``.
 
+    Supported Models
+    ----------------
+    * ``grok-beta`` – legacy model.
+    * ``grok-3-beta`` / ``grok-3-mini-beta`` – current flagship (Spring 2025).
+
+    Requirements & Configuration
+    ----------------------------
+    1. The client **must** be instantiated with::
+
+           base_url="https://api.x.ai/v1"
+
+    2. Provide a valid ``api_key`` – the same key used on the xAI console and
+       exposed as the ``XAI_API_KEY`` environment variable.
+    3. Only *non-streaming* requests are supported at the moment. Pass
+       ``stream=False`` (default) when calling ``create``.
+
+    Known Limitations
+    -----------------
+    * Function/tool calling and JSON mode are supported. Parallel tool calls
+      and other experimental modes are **not** yet validated.
+    * Vision inputs, searches and other beta capabilities are outside the
+      scope of this helper – use raw xAI API until Instructor gains support.
+
     Examples
     --------
     ```python
@@ -170,9 +204,19 @@ def from_xai(
 
         try:
             return raw_create(*args, **kw)
-        except Exception as exc:  # broad except to avoid importing every subtype
-            # Normalize provider-specific exceptions
+        except (_OpenAIBadRequest) as exc:  # type: ignore[name-defined]
+            raise ProviderError("xAI", f"Bad request: {exc}") from exc
+        except (_OpenAIAuthError) as exc:  # type: ignore[name-defined]
+            raise ProviderError(
+                "xAI",
+                "Authentication failed – check `XAI_API_KEY` and organisation settings.",
+            ) from exc
+        except (_OpenAIRateLimit) as exc:  # type: ignore[name-defined]
+            raise ProviderError("xAI", "Rate limit exceeded – slow down your requests.") from exc
+        except (_OpenAIError) as exc:  # type: ignore[name-defined]
             raise ProviderError("xAI", f"API error: {exc}") from exc
+        except Exception as exc:  # noqa: BLE001 – catch-all fallback
+            raise ProviderError("xAI", f"Unexpected error: {exc}") from exc
 
     patched_create = instructor.patch(create=_safe_create, mode=mode)
 

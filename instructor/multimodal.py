@@ -91,7 +91,9 @@ class Image(BaseModel):
         raise ValueError("Unable to determine image type or unsupported image format")
 
     @classmethod
-    def autodetect_safely(cls, source: Union[str, Path]) -> Union[Image, str]:  # noqa: UP007
+    def autodetect_safely(
+        cls, source: Union[str, Path]
+    ) -> Union[Image, str]:  # noqa: UP007
         """Safely attempt to autodetect an image from a source string or path.
 
         Args:
@@ -148,9 +150,16 @@ class Image(BaseModel):
     def from_raw_base64(cls, data: str) -> Image:
         try:
             decoded = base64.b64decode(data)
-            import imghdr
+            from io import BytesIO
+            from PIL import Image as PILImage
 
-            img_type = imghdr.what(None, decoded)
+            try:
+                with BytesIO(decoded) as bio:
+                    img = PILImage.open(bio)
+                    img_type = img.format.lower()
+            except Exception:
+                img_type = None
+
             if img_type:
                 media_type = f"image/{img_type}"
                 if media_type in VALID_MIME_TYPES:
@@ -161,7 +170,7 @@ class Image(BaseModel):
                     )
             raise ValueError(f"Unsupported image type: {img_type}")
         except Exception as e:
-            raise ValueError(f"Invalid or unsupported base64 image data") from e
+            raise ValueError("Invalid or unsupported base64 image data") from e
 
     @classmethod
     @lru_cache
@@ -296,7 +305,9 @@ class Image(BaseModel):
 class Audio(BaseModel):
     """Represents an audio that can be loaded from a URL or file path."""
 
-    source: Union[str, Path] = Field(description="URL or file path of the audio")  # noqa: UP007
+    source: Union[str, Path] = Field(
+        description="URL or file path of the audio"
+    )  # noqa: UP007
     data: Union[str, None] = Field(  # noqa: UP007
         None, description="Base64 encoded audio data", repr=False
     )
@@ -307,9 +318,9 @@ class Audio(BaseModel):
         """Create an Audio instance from a URL."""
         response = requests.get(url)
         content_type = response.headers.get("content-type")
-        assert content_type in VALID_AUDIO_MIME_TYPES, (
-            f"Invalid audio format. Must be one of: {', '.join(VALID_AUDIO_MIME_TYPES)}"
-        )
+        assert (
+            content_type in VALID_AUDIO_MIME_TYPES
+        ), f"Invalid audio format. Must be one of: {', '.join(VALID_AUDIO_MIME_TYPES)}"
 
         data = base64.b64encode(response.content).decode("utf-8")
         return cls(source=url, data=data, media_type=content_type)
@@ -330,9 +341,9 @@ class Audio(BaseModel):
         ):  # <--- this is the case for aac audio files in Windows
             mime_type = "audio/aac"
 
-        assert mime_type in VALID_AUDIO_MIME_TYPES, (
-            f"Invalid audio format. Must be one of: {', '.join(VALID_AUDIO_MIME_TYPES)}"
-        )
+        assert (
+            mime_type in VALID_AUDIO_MIME_TYPES
+        ), f"Invalid audio format. Must be one of: {', '.join(VALID_AUDIO_MIME_TYPES)}"
 
         data = base64.b64encode(path.read_bytes()).decode("utf-8")
         return cls(source=str(path), data=data, media_type=mime_type)
@@ -545,18 +556,22 @@ class PDF(BaseModel):
             if mode in {Mode.RESPONSES_TOOLS, Mode.RESPONSES_TOOLS_WITH_INBUILT_TOOLS}:
                 return {
                     "type": input_file_type,
-                    "filename": self.source
-                    if isinstance(self.source, str)
-                    else str(self.source),
+                    "filename": (
+                        self.source
+                        if isinstance(self.source, str)
+                        else str(self.source)
+                    ),
                     "file_data": f"data:{self.media_type};base64,{data}",
                 }
             else:
                 return {
                     "type": input_file_type,
                     "file": {
-                        "filename": self.source
-                        if isinstance(self.source, str)
-                        else str(self.source),
+                        "filename": (
+                            self.source
+                            if isinstance(self.source, str)
+                            else str(self.source)
+                        ),
                         "file_data": f"data:{self.media_type};base64,{data}",
                     },
                 }
@@ -777,7 +792,9 @@ def convert_messages(
         }
         if autodetect_images:
             if isinstance(content, list):
-                new_content: list[str | dict[str, Any] | Image | Audio] = []  # noqa: UP007
+                new_content: list[str | dict[str, Any] | Image | Audio] = (
+                    []
+                )  # noqa: UP007
                 for item in content:
                     if isinstance(item, str):
                         new_content.append(Image.autodetect_safely(item))

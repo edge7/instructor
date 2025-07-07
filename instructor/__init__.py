@@ -116,3 +116,9 @@ if (
     from .client_genai import from_genai
 
     __all__ += ["from_genai"]
+
+# xAI provider leverages the OpenAI-compatible SDK with a custom base_url.
+if importlib.util.find_spec("openai") is not None:
+    from .client_xai import from_xai
+
+    __all__ += ["from_xai"]

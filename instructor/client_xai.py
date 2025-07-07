@@ -8,35 +8,45 @@ import importlib.util
 # interface.  We import it lazily so that importing *instructor* does not
 # hard-require `openai` at runtime unless the user actually calls
 # `from_xai`.
-if TYPE_CHECKING or importlib.util.find_spec("openai") is not None:  # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover
+    # Type-only imports for static analysis / IDE support.
     import openai  # type: ignore
-    # Strictly for type checking / editor support. These imports are cheap
-    # and only executed when type checking or when the user already has the
-    # dependency installed.
     from openai.types.chat import ChatCompletion  # type: ignore
     from openai.types import CompletionUsage  # type: ignore
+    from pydantic import BaseModel  # type: ignore # noqa: F401 – used in docstring examples
 
-    # Import error classes – fallback to stub classes if an import fails for
-    # any reason to keep type checkers happy without forcing the dependency at
-    # runtime.
-    try:
-        from openai.error import (  # type: ignore
-            AuthenticationError as _OpenAIAuthError,  # type: ignore
-            BadRequestError as _OpenAIBadRequest,  # type: ignore
-            RateLimitError as _OpenAIRateLimit,  # type: ignore
-            APIConnectionError as _OpenAIConnError,  # type: ignore
-            APITimeoutError as _OpenAITimeoutError,  # type: ignore
-            InternalServerError as _OpenAIServerError,  # type: ignore
-            ServiceUnavailableError as _OpenAIUnavailableError,  # type: ignore
-            OpenAIError as _OpenAIError,  # type: ignore
-        )
-    except Exception:  # pragma: no cover
-        class _StubError(Exception):
-            """Fallback stub for missing OpenAI error classes."""
+# Runtime import for the actual OpenAI client (if installed). We do this
+# outside TYPE_CHECKING so production code can execute.
+try:
+    if importlib.util.find_spec("openai") is not None:
+        import openai  # type: ignore
 
-        _OpenAIAuthError = _OpenAIBadRequest = _OpenAIRateLimit = _OpenAIConnError = _OpenAITimeoutError = _OpenAIServerError = _OpenAIUnavailableError = _OpenAIError = _StubError  # type: ignore
-else:  # pragma: no cover
+        # Error classes (used at runtime for error mapping). Guarded with
+        # try/except in case a slimmed-down OpenAI client omits some classes.
+        try:
+            from openai.error import (  # type: ignore
+                AuthenticationError as _OpenAIAuthError,  # type: ignore
+                BadRequestError as _OpenAIBadRequest,  # type: ignore
+                RateLimitError as _OpenAIRateLimit,  # type: ignore
+                APIConnectionError as _OpenAIConnError,  # type: ignore
+                APITimeoutError as _OpenAITimeoutError,  # type: ignore
+                InternalServerError as _OpenAIServerError,  # type: ignore
+                ServiceUnavailableError as _OpenAIUnavailableError,  # type: ignore
+                OpenAIError as _OpenAIError,  # type: ignore
+            )
+        except Exception:  # pragma: no cover
+            class _StubError(Exception):
+                """Fallback stub for missing OpenAI error classes."""
+
+            _OpenAIAuthError = _OpenAIBadRequest = _OpenAIRateLimit = _OpenAIConnError = _OpenAITimeoutError = _OpenAIServerError = _OpenAIUnavailableError = _OpenAIError = _StubError  # type: ignore
+    else:  # openai not installed
+        openai = None  # type: ignore
+        # Create stub error classes so later references are defined.
+        _OpenAIAuthError = _OpenAIBadRequest = _OpenAIRateLimit = _OpenAIConnError = _OpenAITimeoutError = _OpenAIServerError = _OpenAIUnavailableError = _OpenAIError = Exception  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    # Fully missing openai package.
     openai = None  # type: ignore
+    _OpenAIAuthError = _OpenAIBadRequest = _OpenAIRateLimit = _OpenAIConnError = _OpenAITimeoutError = _OpenAIServerError = _OpenAIUnavailableError = _OpenAIError = Exception  # type: ignore
 
 import instructor
 from instructor.exceptions import ClientError, ModeError, ProviderError

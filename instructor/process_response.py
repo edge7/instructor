@@ -564,8 +564,6 @@ def handle_response_model(
         Mode.FUNCTIONS: handle_functions,
         Mode.TOOLS_STRICT: handle_tools_strict,
         Mode.TOOLS: handle_tools,
-        Mode.MISTRAL_TOOLS: handle_mistral_tools,
-        Mode.MISTRAL_STRUCTURED_OUTPUTS: handle_mistral_structured_outputs,
         Mode.JSON_O1: handle_json_o1,
         Mode.JSON: lambda rm, nk: handle_json_modes(rm, nk, Mode.JSON),  # type: ignore
         Mode.MD_JSON: lambda rm, nk: handle_json_modes(rm, nk, Mode.MD_JSON),  # type: ignore
@@ -612,7 +610,12 @@ def handle_response_model(
         mode_handlers.update({Mode.PERPLEXITY_JSON: handle_perplexity_json})
 
     if importlib.util.find_spec("mistralai") is not None:
-        pass  # already included above
+        mode_handlers.update(
+            {
+                Mode.MISTRAL_TOOLS: handle_mistral_tools,
+                Mode.MISTRAL_STRUCTURED_OUTPUTS: handle_mistral_structured_outputs,
+            }
+        )
 
     if importlib.util.find_spec("google.generativeai") is not None:
         mode_handlers.update(

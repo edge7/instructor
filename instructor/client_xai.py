@@ -19,6 +19,10 @@ if TYPE_CHECKING or importlib.util.find_spec("openai") is not None:  # pragma: n
         AuthenticationError as _OpenAIAuthError,  # type: ignore
         BadRequestError as _OpenAIBadRequest,  # type: ignore
         RateLimitError as _OpenAIRateLimit,  # type: ignore
+        APIConnectionError as _OpenAIConnError,  # type: ignore
+        APITimeoutError as _OpenAITimeoutError,  # type: ignore
+        InternalServerError as _OpenAIServerError,  # type: ignore
+        ServiceUnavailableError as _OpenAIUnavailableError,  # type: ignore
         OpenAIError as _OpenAIError,  # type: ignore
     )  # type: ignore
 else:  # pragma: no cover
@@ -119,6 +123,18 @@ def from_xai(
     3. Only *non-streaming* requests are supported at the moment. Pass
        ``stream=False`` (default) when calling ``create``.
 
+    xAI Rate Limits & Quotas
+    -----------------------
+    * **Free-tier** accounts – 20 requests / min, 40k tokens-in, 40k tokens-out per
+      day.
+    * **Starter** plan – 60 requests / min, 250k tokens-in, 250k tokens-out per
+      day.
+    * **Pro / Enterprise** – contact xAI sales for custom quotas.
+
+    Hitting a quota limit results in HTTP 429 with an ``rate_limit_exceeded``
+    error code – *Instructor* translates that into
+    :class:`~instructor.exceptions.ProviderError` with a descriptive message.
+
     Known Limitations
     -----------------
     * Function/tool calling and JSON mode are supported. Parallel tool calls
@@ -213,6 +229,12 @@ def from_xai(
             ) from exc
         except (_OpenAIRateLimit) as exc:  # type: ignore[name-defined]
             raise ProviderError("xAI", "Rate limit exceeded – slow down your requests.") from exc
+        except (_OpenAITimeoutError) as exc:  # type: ignore[name-defined]
+            raise ProviderError("xAI", "Request timed-out – retry later or increase timeout.") from exc
+        except (_OpenAIConnError) as exc:  # type: ignore[name-defined]
+            raise ProviderError("xAI", "Network error talking to xAI – check connectivity.") from exc
+        except (_OpenAIServerError | _OpenAIUnavailableError) as exc:  # type: ignore[name-defined]
+            raise ProviderError("xAI", "xAI service is currently unavailable – please retry.") from exc
         except (_OpenAIError) as exc:  # type: ignore[name-defined]
             raise ProviderError("xAI", f"API error: {exc}") from exc
         except Exception as exc:  # noqa: BLE001 – catch-all fallback

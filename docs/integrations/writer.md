@@ -26,7 +26,7 @@ from writerai import Writer
 from pydantic import BaseModel
 
 # Initialize Writer client
-client = instructor.from_writer(Writer(api_key="your API key"))
+client = instructor.from_provider("writer/palmyra-x-004")
 
 
 class User(BaseModel):
@@ -36,7 +36,6 @@ class User(BaseModel):
 
 # Extract structured data
 user = client.chat.completions.create(
-    model="palmyra-x-004",
     messages=[{"role": "user", "content": "Extract: John is 30 years old"}],
     response_model=User,
 )
@@ -53,7 +52,7 @@ from writerai import AsyncWriter
 from pydantic import BaseModel
 
 # Initialize Writer client
-client = instructor.from_writer(AsyncWriter())
+client = instructor.from_provider("writer/palmyra-x-004")
 
 
 class User(BaseModel):
@@ -64,7 +63,6 @@ class User(BaseModel):
 async def extract_user():
     # Extract structured data
     user = await client.chat.completions.create(
-        model="palmyra-x-004",
         messages=[{"role": "user", "content": "Extract: John is 30 years old"}],
         response_model=User,
     )
@@ -89,7 +87,7 @@ from writerai import Writer
 from pydantic import BaseModel
 
 # Initialize Writer client
-client = instructor.from_writer(Writer())
+client = instructor.from_provider("writer/palmyra-x-004")
 
 
 class Address(BaseModel):
@@ -106,7 +104,6 @@ class User(BaseModel):
 
 # Create structured output with nested objects
 user = client.chat.completions.create(
-    model="palmyra-x-004",
     messages=[
         {
             "role": "user",
@@ -154,7 +151,7 @@ import instructor
 from writerai import Writer
 from pydantic import BaseModel
 
-client = instructor.from_writer(Writer())
+client = instructor.from_provider("writer/palmyra-x-004")
 
 
 class Person(BaseModel):
@@ -163,7 +160,6 @@ class Person(BaseModel):
 
 
 resp = client.chat.completions.create_partial(
-    model="palmyra-x-004",
     messages=[
         {
             "role": "user",

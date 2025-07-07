@@ -35,7 +35,7 @@ client = OpenAI(
 )
 
 # Enable instructor patches for Perplexity client
-client = instructor.from_perplexity(client)
+client = instructor.from_provider("perplexity/sonar-small-online")
 
 
 class User(BaseModel):
@@ -45,7 +45,6 @@ class User(BaseModel):
 
 # Create structured output
 user = client.chat.completions.create(
-    model="sonar-medium-online",
     messages=[
         {"role": "user", "content": "Extract: Jason is 25 years old"},
     ],
@@ -72,7 +71,7 @@ client = AsyncOpenAI(
 )
 
 # Enable instructor patches for Perplexity client
-client = instructor.from_perplexity(client)
+client = instructor.from_provider("perplexity/sonar-small-online")
 
 
 class User(BaseModel):
@@ -82,7 +81,6 @@ class User(BaseModel):
 
 async def extract_user():
     user = await client.chat.completions.create(
-        model="sonar-medium-online",
         messages=[
             {"role": "user", "content": "Extract: Jason is 25 years old"},
         ],
@@ -112,7 +110,7 @@ client = OpenAI(
 )
 
 # Enable instructor patches for Perplexity client
-client = instructor.from_perplexity(client)
+client = instructor.from_provider("perplexity/sonar-small-online")
 
 
 class Address(BaseModel):
@@ -129,7 +127,6 @@ class User(BaseModel):
 
 # Create structured output with nested objects
 user = client.chat.completions.create(
-    model="sonar-medium-online",
     messages=[
         {
             "role": "user",
@@ -174,10 +171,7 @@ client = OpenAI(
 )
 
 # Enable instructor patches for Perplexity client with explicit mode
-client = instructor.from_perplexity(
-    client,
-    mode=Mode.PERPLEXITY_JSON
-)
+client = instructor.from_provider("perplexity/sonar-small-online")
 
 
 class User(BaseModel):
@@ -187,7 +181,6 @@ class User(BaseModel):
 
 # Create structured output
 user = client.chat.completions.create(
-    model="sonar-medium-online",
     messages=[
         {"role": "user", "content": "Extract: Jason is 25 years old"},
     ],

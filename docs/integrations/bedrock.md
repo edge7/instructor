@@ -30,7 +30,7 @@ from pydantic import BaseModel
 bedrock_client = boto3.client('bedrock-runtime')
 
 # Enable instructor patches for Bedrock client
-client = instructor.from_bedrock(bedrock_client)
+client = instructor.from_provider("bedrock/anthropic.claude-3-sonnet-20240229-v1:0")
 
 
 class User(BaseModel):
@@ -68,10 +68,7 @@ from pydantic import BaseModel
 bedrock_client = boto3.client('bedrock-runtime')
 
 # Enable instructor patches for Bedrock client with specific mode
-client = instructor.from_bedrock(
-    bedrock_client,
-    mode=Mode.BEDROCK_TOOLS
-)
+client = instructor.from_provider("bedrock/anthropic.claude-3-sonnet-20240229-v1:0")
 
 
 class User(BaseModel):
@@ -103,7 +100,7 @@ from pydantic import BaseModel
 bedrock_client = boto3.client('bedrock-runtime')
 
 # Enable instructor patches for Bedrock client
-client = instructor.from_bedrock(bedrock_client)
+client = instructor.from_provider("bedrock/anthropic.claude-3-sonnet-20240229-v1:0")
 
 
 class Address(BaseModel):

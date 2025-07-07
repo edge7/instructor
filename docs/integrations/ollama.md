@@ -38,7 +38,6 @@ Instructor's patch enhances a openai api it with the following features:
 Ollama integration now properly supports timeout parameters to ensure reliable request handling:
 
 ```python
-from openai import OpenAI
 from pydantic import BaseModel
 import instructor
 
@@ -46,16 +45,12 @@ class Character(BaseModel):
     name: str
     age: int
 
-client = instructor.from_openai(
-    OpenAI(
-        base_url="http://localhost:11434/v1",
-        api_key="ollama",  # required, but unused
-    ),
+client = instructor.from_provider(
+    "ollama/llama2",
     mode=instructor.Mode.JSON,
 )
 
 resp = client.chat.completions.create(
-    model="llama2",
     messages=[
         {
             "role": "user",
@@ -154,16 +149,12 @@ class Character(BaseModel):
 
 
 # enables `response_model` in create call
-client = instructor.from_openai(
-    OpenAI(
-        base_url="http://localhost:11434/v1",
-        api_key="ollama",  # required, but unused
-    ),
+client = instructor.from_provider(
+    "ollama/llama2",
     mode=instructor.Mode.JSON,
 )
 
 resp = client.chat.completions.create(
-    model="llama2",
     messages=[
         {
             "role": "user",

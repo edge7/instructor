@@ -42,8 +42,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 import instructor
 
-client = instructor.from_openai(
-    OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com")
+client = instructor.from_provider("deepseek/deepseek-chat"), base_url="https://api.deepseek.com")
 )
 
 
@@ -54,7 +53,6 @@ class User(BaseModel):
 
 # Create structured output
 user = client.chat.completions.create(
-    model="deepseek-chat",
     messages=[
         {"role": "user", "content": "Extract: Jason is 25 years old"},
     ],
@@ -74,9 +72,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel
 import instructor
 
-client = instructor.from_openai(
-    AsyncOpenAI(
-        api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com"
+client = instructor.from_provider("deepseek/deepseek-chat"), base_url="https://api.deepseek.com"
     )
 )
 
@@ -88,7 +84,6 @@ class User(BaseModel):
 
 async def extract_user():
     user = await client.chat.completions.create(
-        model="deepseek-chat",
         messages=[
             {"role": "user", "content": "Extract: Jason is 25 years old"},
         ],
@@ -127,14 +122,12 @@ class User(BaseModel):
 
 
 # Initialize with API key
-client = instructor.from_openai(
-    OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com")
+client = instructor.from_provider("deepseek/deepseek-chat"), base_url="https://api.deepseek.com")
 )
 
 
 # Create structured output with nested objects
 user = client.chat.completions.create(
-    model="deepseek-chat",
     messages=[
         {
             "role": "user",
@@ -186,8 +179,7 @@ from pydantic import BaseModel
 
 
 # Initialize with API key
-client = instructor.from_openai(
-    OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com")
+client = instructor.from_provider("deepseek/deepseek-chat"), base_url="https://api.deepseek.com")
 )
 
 
@@ -198,7 +190,6 @@ class User(BaseModel):
 
 
 user = client.chat.completions.create_partial(
-    model="deepseek-chat",
     messages=[
         {
             "role": "user",
@@ -231,8 +222,7 @@ from pydantic import BaseModel
 
 
 # Initialize with API key
-client = instructor.from_openai(
-    OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com")
+client = instructor.from_provider("deepseek/deepseek-chat"), base_url="https://api.deepseek.com")
 )
 
 
@@ -243,7 +233,6 @@ class User(BaseModel):
 
 # Extract multiple users from text
 users = client.chat.completions.create_iterable(
-    model="deepseek-chat",
     messages=[
         {
             "role": "user",
@@ -277,8 +266,7 @@ from pydantic import BaseModel
 import instructor
 from rich import print
 
-client = instructor.from_openai(
-    OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com"),
+client = instructor.from_provider("deepseek/deepseek-chat"), base_url="https://api.deepseek.com"),
     mode=instructor.Mode.MD_JSON,
 )
 
@@ -290,7 +278,6 @@ class User(BaseModel):
 
 # Create structured output
 completion, raw_completion = client.chat.completions.create_with_completion(
-    model="deepseek-reasoner",
     messages=[
         {"role": "user", "content": "Extract: Jason is 25 years old"},
     ],

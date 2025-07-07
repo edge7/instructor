@@ -21,11 +21,7 @@ import instructor
 import os
 from pydantic import BaseModel
 
-client = instructor.from_openai(
-    OpenAI(
-        base_url="https://api.sambanova.ai/v1",
-        api_key=os.environ["SAMBANOVA_API_KEY"]
-    )
+client = instructor.from_provider("sambanova/Meta-Llama-3.1-405B-Instruct")
 )
 
 class User(BaseModel):
@@ -33,7 +29,6 @@ class User(BaseModel):
     age: int
 
 user = client.chat.completions.create(
-    model="Meta-Llama-3.1-405B-Instruct",
     messages=[
         {"role": "user", "content": "Ivan is 28"},
     ],
@@ -52,11 +47,7 @@ import instructor
 import os
 from pydantic import BaseModel
 
-client = instructor.from_openai(
-    AsyncOpenAI(
-        base_url="https://api.sambanova.ai/v1",
-        api_key=os.environ["SAMBANOVA_API_KEY"]
-    )
+client = instructor.from_provider("sambanova/Meta-Llama-3.1-405B-Instruct")
 )
 
 class User(BaseModel):
@@ -65,7 +56,6 @@ class User(BaseModel):
 
 async def get_user():
     user = await client.chat.completions.create(
-        model="Meta-Llama-3.1-405B-Instruct",
         messages=[
             {"role": "user", "content": "Ivan is 28"},
         ],

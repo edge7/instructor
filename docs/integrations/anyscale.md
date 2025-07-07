@@ -32,22 +32,16 @@ from openai import OpenAI
 from pydantic import BaseModel
 
 # Initialize the client with Anyscale base URL
-client = instructor.from_openai(
-    OpenAI(
-        base_url="https://api.endpoints.anyscale.com/v1",
-        api_key=os.environ["ANYSCALE_API_KEY"],
-    ),
+client = instructor.from_provider(
+    "anyscale/Mixtral-8x7B-Instruct-v0.1",
     mode=instructor.Mode.JSON_SCHEMA,
 )
-
-# Define your data structure
 class UserExtract(BaseModel):
     name: str
     age: int
 
 # Extract structured data
 user = client.chat.completions.create(
-    model="mistralai/Mixtral-8x7B-Instruct-v0.1",
     response_model=UserExtract,
     messages=[
         {"role": "user", "content": "Extract jason is 25 years old"},

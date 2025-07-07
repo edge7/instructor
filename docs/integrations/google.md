@@ -28,10 +28,7 @@ class User(BaseModel):
     age: int
 
 
-client = instructor.from_gemini(
-    client=genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash-latest",
-    ),
+client = instructor.from_provider("google/gemini-1.5-flash-latest"),
     mode=instructor.Mode.GEMINI_JSON,
 )
 
@@ -68,10 +65,7 @@ class User(BaseModel):
 
 
 async def extract_user():
-    client = instructor.from_gemini(
-        client=genai.GenerativeModel(
-            model_name="models/gemini-1.5-flash-latest",
-        ),
+    client = instructor.from_provider("google/gemini-1.5-flash-latest"),
         use_async=True,
     )
 
@@ -117,10 +111,7 @@ class User(BaseModel):
     age: int
 
 
-client = instructor.from_gemini(
-    client=genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash-latest",
-    ),
+client = instructor.from_provider("google/gemini-1.5-flash-latest"),
     mode=instructor.Mode.GEMINI_JSON,
 )
 
@@ -164,10 +155,7 @@ class User(BaseModel):
     addresses: list[Address]
 
 
-client = instructor.from_gemini(
-    client=genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash-latest",
-    ),
+client = instructor.from_provider("google/gemini-1.5-flash-latest"),
 )
 
 user = client.chat.completions.create(
@@ -218,10 +206,7 @@ import google.generativeai as genai
 from pydantic import BaseModel
 
 
-client = instructor.from_gemini(
-    client=genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash-latest",
-    ),
+client = instructor.from_provider("google/gemini-1.5-flash-latest"),
 )
 
 
@@ -256,10 +241,7 @@ import google.generativeai as genai
 from pydantic import BaseModel
 
 
-client = instructor.from_gemini(
-    client=genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash-latest",
-    ),
+client = instructor.from_provider("google/gemini-1.5-flash-latest"),
 )
 
 

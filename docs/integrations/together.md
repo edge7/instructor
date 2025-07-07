@@ -58,7 +58,7 @@ client = openai.OpenAI(
 
 
 # By default, the patch function will patch the ChatCompletion.create and ChatCompletion.create methods to support the response_model parameter
-client = instructor.from_openai(client, mode=instructor.Mode.TOOLS)
+client = instructor.from_provider("together/Mixtral-8x7B-Instruct-v0.1")
 
 
 # Now, we can use the response_model parameter using only a base model
@@ -69,7 +69,6 @@ class UserExtract(BaseModel):
 
 
 user: UserExtract = client.chat.completions.create(
-    model="mistralai/Mixtral-8x7B-Instruct-v0.1",
     response_model=UserExtract,
     messages=[
         {"role": "user", "content": "Extract jason is 25 years old"},

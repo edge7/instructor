@@ -36,10 +36,9 @@ client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-client = instructor.from_openai(client, mode=instructor.Mode.TOOLS)
+client = instructor.from_provider("openrouter/google/gemini-2.0-flash-lite-001")
 
 resp = client.chat.completions.create(
-    model="google/gemini-2.0-flash-lite-001",
     messages=[
         {
             "role": "user",
@@ -57,8 +56,6 @@ print(resp)
 ## Simple User Example ( Async )
 
 ```python
-from openai import AsyncOpenAI
-import os
 import instructor
 from pydantic import BaseModel
 import asyncio
@@ -69,18 +66,14 @@ class User(BaseModel):
     age: int
 
 
-client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+client = instructor.from_provider(
+    "openrouter/google/gemini-2.0-flash-lite-001",
+    async_client=True,
 )
-
-
-client = instructor.from_openai(client, mode=instructor.Mode.TOOLS)
 
 
 async def extract_user():
     user = await client.chat.completions.create(
-        model="google/gemini-2.0-flash-lite-001",
         messages=[
             {"role": "user", "content": "Extract: Jason is 25 years old"},
         ],
@@ -124,11 +117,10 @@ client = OpenAI(
 )
 
 # Enable instructor patches for OpenAI client
-client = instructor.from_openai(client, mode=instructor.Mode.TOOLS)
+client = instructor.from_provider("openrouter/google/gemini-2.0-flash-lite-001")
 
 # Create structured output with nested objects
 user = client.chat.completions.create(
-    model="anthropic/claude-3.7-sonnet",
     messages=[
         {
             "role": "user",
@@ -175,13 +167,10 @@ client = OpenAI(
 )
 
 # Enable instructor patches for OpenAI client
-client = instructor.from_openai(
-    client, mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS
-)
+client = instructor.from_provider("openrouter/google/gemini-2.0-flash-lite-001")
 
 # Create structured output with nested objects
 user = client.chat.completions.create(
-    model="google/gemini-2.0-flash-001",
     messages=[
         {
             "role": "user",
@@ -228,11 +217,10 @@ client = OpenAI(
 )
 
 # Enable instructor patches for OpenAI client
-client = instructor.from_openai(client, mode=instructor.Mode.JSON)
+client = instructor.from_provider("openrouter/google/gemini-2.0-flash-lite-001")
 
 # Create structured output with nested objects
 user = client.chat.completions.create(
-    model="openai/chatgpt-4o-latest",
     messages=[
         {
             "role": "user",
@@ -270,11 +258,10 @@ client = OpenAI(
 )
 
 # Enable instructor patches for OpenAI client
-client = instructor.from_openai(client, mode=instructor.Mode.JSON)
+client = instructor.from_provider("openrouter/google/gemini-2.0-flash-lite-001")
 
 # Create structured output with nested objects
 user = client.chat.completions.create_partial(
-    model="openai/chatgpt-4o-latest",
     messages=[
         {
             "role": "user",

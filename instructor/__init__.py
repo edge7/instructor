@@ -109,6 +109,11 @@ if importlib.util.find_spec("openai") is not None:
 
     __all__ += ["from_perplexity"]
 
+if importlib.util.find_spec("xai_sdk") is not None:
+    from .client_xai import from_xai
+
+    __all__ += ["from_xai"]
+
 if (
     importlib.util.find_spec("google")
     and importlib.util.find_spec("google.genai") is not None

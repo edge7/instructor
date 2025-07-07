@@ -58,6 +58,9 @@ class Mode(enum.Enum):
     FIREWORKS_TOOLS = "fireworks_tools"
     FIREWORKS_JSON = "fireworks_json"
 
+    XAI_TOOLS = "xai_tools"
+    XAI_JSON = "xai_json"
+
     # Other providers
     WRITER_TOOLS = "writer_tools"
     WRITER_JSON = "writer_json"
@@ -85,6 +88,7 @@ class Mode(enum.Enum):
             cls.CEREBRAS_TOOLS,
             cls.FIREWORKS_TOOLS,
             cls.WRITER_TOOLS,
+            cls.XAI_TOOLS,
             cls.BEDROCK_TOOLS,
             cls.OPENROUTER_STRUCTURED_OUTPUTS,
             cls.MISTRAL_STRUCTURED_OUTPUTS,
@@ -105,6 +109,7 @@ class Mode(enum.Enum):
             cls.CEREBRAS_JSON,
             cls.FIREWORKS_JSON,
             cls.WRITER_JSON,
+            cls.XAI_JSON,
             cls.BEDROCK_JSON,
             cls.PERPLEXITY_JSON,
             cls.OPENROUTER_STRUCTURED_OUTPUTS,

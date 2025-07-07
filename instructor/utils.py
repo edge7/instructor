@@ -55,6 +55,7 @@ class Provider(Enum):
     CEREBRAS = "cerebras"
     FIREWORKS = "fireworks"
     WRITER = "writer"
+    XAI = "xai"
     UNKNOWN = "unknown"
     BEDROCK = "bedrock"
     PERPLEXITY = "perplexity"
@@ -88,6 +89,8 @@ def get_provider(base_url: str) -> Provider:
         return Provider.VERTEXAI
     elif "writer" in str(base_url):
         return Provider.WRITER
+    elif "x.ai" in str(base_url) or "xai" in str(base_url):
+        return Provider.XAI
     elif "perplexity" in str(base_url):
         return Provider.PERPLEXITY
     elif "openrouter" in str(base_url):

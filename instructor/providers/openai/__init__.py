@@ -3,7 +3,7 @@
 from typing import Any, ClassVar, Optional, TypeVar, Union
 from collections.abc import Generator
 from collections.abc import Iterable
-from tenacity import Retrying
+from tenacity import Retrying, AsyncRetrying
 from pydantic import BaseModel
 import openai
 from openai.types.chat import ChatCompletion
@@ -36,9 +36,8 @@ class OpenAIProvider(BaseProvider):
         """
         super().__init__()
         self.client = client or openai.OpenAI()
-        self._retry_config["conditions"].update(
-            {"rate_limit_error", "timeout_error", "server_error"}
-        )
+        # Set default retry conditions for OpenAI
+        self._retry_config["conditions"] = {"rate_limit_error", "timeout_error", "server_error"}
 
     def prepare_request(
         self, response_model: Any, mode: Mode, **kwargs: Any
@@ -99,7 +98,7 @@ class OpenAIProvider(BaseProvider):
         return request_params
 
     def process_response(
-        self, response: ChatCompletion, response_model: Any, mode: Mode, **kwargs: Any
+        self, response: Any, response_model: Any, mode: Mode, **kwargs: Any
     ) -> Any:
         """Process response from OpenAI API.
 
@@ -112,7 +111,12 @@ class OpenAIProvider(BaseProvider):
         Returns:
             Processed response
         """
-        return process_openai_response(response, response_model, mode, **kwargs)
+        return process_openai_response(
+            response=response,
+            response_model=response_model,
+            mode=mode,
+            **kwargs
+        )
 
     def handle_error(self, error: Exception, response: Any, **kwargs: Any) -> None:
         """Handle OpenAI API errors.
@@ -122,13 +126,13 @@ class OpenAIProvider(BaseProvider):
             response: Raw API response
             **kwargs: Additional error handling options
         """
-        handle_openai_error(error, response, **kwargs)
+        handle_openai_error(error, response)
 
     def create(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T] | None = None,
-        max_retries: int | Retrying = 3,
+        retry_config: int | Retrying | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -141,7 +145,7 @@ class OpenAIProvider(BaseProvider):
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            max_retries: Maximum number of retries or Retrying instance
+            retry_config: Number of retries or a Retrying/AsyncRetrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -157,7 +161,7 @@ class OpenAIProvider(BaseProvider):
         request_params["messages"] = messages
 
         # Create completion with retries
-        for attempt in Retrying(max_retries):
+        for attempt in Retrying(retry_config):
             with attempt:
                 try:
                     # Run pre-completion hooks
@@ -184,9 +188,7 @@ class OpenAIProvider(BaseProvider):
                     return result
 
                 except Exception as e:
-                    self.handle_error(
-                        e, completion if "completion" in locals() else None
-                    )
+                    self.handle_error(e, completion if "completion" in locals() else None)
                     raise
 
     def create_with_completion(
@@ -326,7 +328,7 @@ class OpenAIProvider(BaseProvider):
         self,
         messages: list[dict[str, Any]],
         response_model: type[T],
-        max_retries: int | Retrying = 3,
+        retry_config: int | Retrying | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -339,7 +341,7 @@ class OpenAIProvider(BaseProvider):
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            max_retries: Maximum number of retries or Retrying instance
+            retry_config: Number of retries or a Retrying/AsyncRetrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -356,7 +358,7 @@ class OpenAIProvider(BaseProvider):
         request_params["stream"] = True
 
         # Create streaming completion with retries
-        for attempt in Retrying(max_retries):
+        for attempt in Retrying(retry_config):
             with attempt:
                 try:
                     # Run pre-completion hooks

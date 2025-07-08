@@ -29,12 +29,12 @@ class BaseProvider(ABC):
 
     This class defines the interface that all providers must implement.
     It includes methods for request preparation, response processing,
-    error handling, and retry configuration.
+    and error handling.
     """
 
     name: str
     supported_modes: ClassVar[set[Mode]]
-    required_packages: ClassVar[dict[str, str]] = {}  # Format: {"package_name": "min_version"}
+    required_packages: ClassVar[dict[str, str]] = {}
 
     def __init__(self) -> None:
         """Initialize base provider and verify package requirements."""
@@ -114,7 +114,7 @@ class BaseProvider(ABC):
         self,
         messages: list[dict[str, Any]],
         response_model: type[T] | None = None,
-        max_retries: int | Retrying = 3,
+        retry_config: int | Retrying | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -126,7 +126,7 @@ class BaseProvider(ABC):
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            max_retries: Maximum number of retries or Retrying instance
+            retry_config: Number of retries or a Retrying/AsyncRetrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -139,69 +139,11 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
-    def create_with_completion(
-        self,
-        messages: list[dict[str, Any]],
-        response_model: type[T],
-        max_retries: int | Retrying = 3,
-        validation_context: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
-        strict: bool = True,
-        hooks: Hooks | None = None,
-        **kwargs: Any,
-    ) -> tuple[T, Any] | Awaitable[tuple[T, Any]]:
-        """Create a completion and return both the processed response and raw completion.
-
-        Args:
-            messages: List of chat messages
-            response_model: Expected response model type
-            max_retries: Maximum number of retries or Retrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Tuple of (processed_response, raw_response)
-        """
-        pass
-
-    @abstractmethod
-    def create_partial(
-        self,
-        response_model: type[T],
-        messages: list[dict[str, Any]],
-        max_retries: int | Retrying = 3,
-        validation_context: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
-        strict: bool = True,
-        hooks: Hooks | None = None,
-        **kwargs: Any,
-    ) -> Generator[T, None, None] | AsyncGenerator[T, None]:
-        """Create a streaming completion that yields partial results.
-
-        Args:
-            response_model: Expected response model type
-            messages: List of chat messages
-            max_retries: Maximum number of retries or Retrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Generator yielding partial results
-        """
-        pass
-
-    @abstractmethod
     def create_iterable(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T],
-        max_retries: int | Retrying = 3,
+        retry_config: int | Retrying | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -213,7 +155,7 @@ class BaseProvider(ABC):
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            max_retries: Maximum number of retries or Retrying instance
+            retry_config: Number of retries or a Retrying/AsyncRetrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -224,50 +166,3 @@ class BaseProvider(ABC):
             Generator yielding list items
         """
         pass
-
-    def configure_retry(
-        self, max_retries: Optional[int] = None, timeout: Optional[int] = None
-    ) -> None:
-        """Configure retry settings.
-
-        Args:
-            max_retries: Maximum number of retry attempts
-            timeout: Timeout in seconds between retries
-        """
-        if max_retries is not None:
-            self._retry_config["max_retries"] = max_retries
-        if timeout is not None:
-            self._retry_config["timeout"] = timeout
-
-    def get_retry_conditions(self) -> set[Any]:
-        """Get provider-specific retry conditions.
-
-        Returns:
-            Set of conditions that should trigger a retry
-        """
-        return self._retry_config["conditions"]
-
-    def add_retry_condition(self, condition: Any) -> None:
-        """Add a retry condition.
-
-        Args:
-            condition: Condition that should trigger a retry
-        """
-        self._retry_config["conditions"].add(condition)
-
-    def remove_retry_condition(self, condition: Any) -> None:
-        """Remove a retry condition.
-
-        Args:
-            condition: Condition to remove from retry triggers
-        """
-        self._retry_config["conditions"].discard(condition)
-
-    @property
-    def retry_config(self) -> dict[str, Any]:
-        """Get current retry configuration.
-
-        Returns:
-            Dictionary containing retry settings
-        """
-        return self._retry_config.copy()

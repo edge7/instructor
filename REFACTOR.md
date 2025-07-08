@@ -7,6 +7,10 @@
   mkdir -p instructor/providers/{base,registry,openai,anthropic,google,mistral,cohere}
   touch instructor/providers/__init__.py
   ```
+  Look at:
+  - `instructor/` - Current module structure
+  - `instructor/providers/` - New provider directory
+  - `AGENT.md` - Core library architecture
   ✅ Done: Each provider gets its own directory with modular components
 
 - [x] Implement BaseProvider
@@ -21,11 +25,22 @@
     - [x] `name: str`
     - [x] `supported_modes: ClassVar[set[Mode]]`
       ✅ Done: Each provider declares supported modes
+  Look at:
+  - `instructor/client.py` - Current base client implementation
+  - `instructor/client_*.py` - Current provider-specific clients
+  - `instructor/process_response.py` - Response processing logic
+  - `instructor/mode.py` - Mode system implementation
+  - `tests/llm/test_*/` - Provider-specific tests
 
 - [x] Implement ProviderRegistry
   - [x] Add provider registration decorator
   - [x] Add provider lookup method
   - [x] Add provider validation
+  Look at:
+  - `instructor/auto_client.py` - Current provider factory pattern
+  - `instructor/utils.py` - Current provider detection
+  - `instructor/providers/registry/__init__.py` - New registry implementation
+  - `tests/test_auto_client.py` - Provider factory tests
   ✅ Done: Centralized provider registration and lookup
 
 ### Additional Improvements Made
@@ -33,6 +48,10 @@
   - Replaced `typing.Dict` with `dict`
   - Replaced `typing.Type` with `type`
   - Replaced `typing.Set` with `set`
+  Look at:
+  - `pyproject.toml` - Python version requirements
+  - `instructor/function_calls.py` - Type usage examples
+  - `instructor/dsl/simple_type.py` - Type handling utilities
 
 ## Phase 2: Base Provider Enhancements
 These enhancements establish core patterns that must be followed by all future provider implementations:

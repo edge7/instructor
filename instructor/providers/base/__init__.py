@@ -14,6 +14,8 @@ from collections.abc import Generator, AsyncGenerator
 from collections.abc import Iterable, Awaitable
 from tenacity import Retrying, AsyncRetrying
 from pydantic import BaseModel
+import importlib.util
+import pkg_resources
 
 from ...mode import Mode
 from ...dsl.partial import Partial
@@ -32,14 +34,36 @@ class BaseProvider(ABC):
 
     name: str
     supported_modes: ClassVar[set[Mode]]
+    required_packages: ClassVar[dict[str, str]] = {}  # Format: {"package_name": "min_version"}
 
     def __init__(self) -> None:
-        """Initialize base provider."""
+        """Initialize base provider and verify package requirements."""
         self._retry_config: dict[str, Any] = {
             "max_retries": 3,
             "timeout": 60,
             "conditions": set(),
         }
+        
+        # Check package requirements
+        for package_name, min_version in self.required_packages.items():
+            # Check if package is installed
+            spec = importlib.util.find_spec(package_name)
+            if spec is None:
+                raise ImportError(
+                    f"Package '{package_name}' is required but not installed. "
+                    f"Please install it with: pip install {package_name}"
+                    + (f">={min_version}" if min_version else "")
+                )
+
+            # Check version if specified
+            if min_version:
+                installed_version = pkg_resources.get_distribution(package_name).version
+                if pkg_resources.parse_version(installed_version) < pkg_resources.parse_version(min_version):
+                    raise ImportError(
+                        f"Package '{package_name}' version {min_version} or higher is required, "
+                        f"but version {installed_version} is installed. "
+                        f"Please upgrade with: pip install {package_name}>={min_version}"
+                    )
 
     @abstractmethod
     def prepare_request(

@@ -10,7 +10,6 @@ from openai.types.chat import ChatCompletion
 from openai._types import NotGiven, Undefined
 
 from ..base import BaseProvider
-from ..base.dependencies import requires_package
 from ...mode import Mode
 from ...dsl.partial import Partial
 from ...hooks import Hooks
@@ -25,6 +24,7 @@ class OpenAIProvider(BaseProvider):
 
     name = "openai"
     supported_modes = {Mode.FUNCTIONS, Mode.TOOLS, Mode.TOOLS_STRICT, Mode.JSON}
+    required_packages = {"openai": "1.0.0"}
 
     def __init__(
         self, client: Optional[openai.OpenAI | openai.AsyncOpenAI] = None
@@ -124,7 +124,6 @@ class OpenAIProvider(BaseProvider):
         """
         handle_openai_error(error, response, **kwargs)
 
-    @requires_package("openai", min_version="1.0.0")
     def create(
         self,
         messages: list[dict[str, Any]],
@@ -190,7 +189,6 @@ class OpenAIProvider(BaseProvider):
                     )
                     raise
 
-    @requires_package("openai", min_version="1.0.0")
     def create_with_completion(
         self,
         messages: list[dict[str, Any]],
@@ -256,7 +254,6 @@ class OpenAIProvider(BaseProvider):
                     )
                     raise
 
-    @requires_package("openai", min_version="1.0.0")
     def create_partial(
         self,
         response_model: type[T],
@@ -325,7 +322,6 @@ class OpenAIProvider(BaseProvider):
                     self.handle_error(e, None)
                     raise
 
-    @requires_package("openai", min_version="1.0.0")
     def create_iterable(
         self,
         messages: list[dict[str, Any]],

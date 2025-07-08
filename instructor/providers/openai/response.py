@@ -1,126 +1,194 @@
-"""OpenAI response processing utilities."""
+"""OpenAI response processing module."""
 
-from typing import Any, TypeVar
-from pydantic import BaseModel
-from openai import pydantic_function_tool
+from typing import Any, Optional
+from pydantic import BaseModel, ValidationError
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+import json
 
 from ...mode import Mode
-from ...dsl.parallel import ParallelModel, handle_parallel_model
 
-T = TypeVar("T")
-T_Model = TypeVar("T_Model", bound=BaseModel)
 
-def handle_parallel_tools(
-    response_model: type[T],
-    new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    """Handle parallel tools mode.
-    
+def process_openai_response(
+    response: ChatCompletion,
+    response_model: Optional[type[BaseModel]],
+    mode: Mode,
+    validation_context: Optional[dict[str, Any]] = None,
+    context: Optional[dict[str, Any]] = None,
+    strict: bool = True,
+    partial: bool = False,
+    iterable: bool = False,
+    **kwargs: Any,
+) -> Any:
+    """Process response from OpenAI API.
+
     Args:
+        response: Raw API response
         response_model: Expected response model
-        new_kwargs: Request kwargs
-        
-    Returns:
-        Tuple of (response model, updated kwargs)
-        
-    Raises:
-        ConfigurationError: If streaming is enabled
-    """
-    if new_kwargs.get("stream", False):
-        from instructor.exceptions import ConfigurationError
-        raise ConfigurationError(
-            "stream=True is not supported when using PARALLEL_TOOLS mode"
-        )
-        
-    new_kwargs["tools"] = handle_parallel_model(response_model)
-    new_kwargs["tool_choice"] = "auto"
-    return ParallelModel(typehint=response_model), new_kwargs
-
-def handle_functions(
-    response_model: type[T],
-    new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    """Handle functions mode.
-    
-    Args:
-        response_model: Expected response model
-        new_kwargs: Request kwargs
-        
-    Returns:
-        Tuple of (response model, updated kwargs)
-    """
-    Mode.warn_mode_functions_deprecation()
-    new_kwargs["functions"] = [response_model.openai_schema]
-    new_kwargs["function_call"] = {"name": response_model.openai_schema["name"]}
-    return response_model, new_kwargs
-
-def handle_tools_strict(
-    response_model: type[T],
-    new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    """Handle strict tools mode.
-    
-    Args:
-        response_model: Expected response model
-        new_kwargs: Request kwargs
-        
-    Returns:
-        Tuple of (response model, updated kwargs)
-    """
-    response_model_schema = pydantic_function_tool(response_model)
-    response_model_schema["function"]["strict"] = True
-    new_kwargs["tools"] = [response_model_schema]
-    new_kwargs["tool_choice"] = {
-        "type": "function",
-        "function": {"name": response_model_schema["function"]["name"]},
-    }
-    return response_model, new_kwargs
-
-def handle_tools(
-    response_model: type[T],
-    new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    """Handle tools mode.
-    
-    Args:
-        response_model: Expected response model
-        new_kwargs: Request kwargs
-        
-    Returns:
-        Tuple of (response model, updated kwargs)
-    """
-    new_kwargs["tools"] = [
-        {
-            "type": "function",
-            "function": response_model.openai_schema,
-        }
-    ]
-    new_kwargs["tool_choice"] = {
-        "type": "function",
-        "function": {"name": response_model.openai_schema["name"]},
-    }
-    return response_model, new_kwargs
-
-def handle_json_modes(
-    response_model: type[T],
-    new_kwargs: dict[str, Any],
-    mode: Mode
-) -> tuple[type[T], dict[str, Any]]:
-    """Handle JSON modes.
-    
-    Args:
-        response_model: Expected response model
-        new_kwargs: Request kwargs
         mode: Request mode
-        
+        validation_context: Context for model validation
+        context: Additional context for processing
+        strict: Whether to use strict validation
+        partial: Whether this is a partial response
+        iterable: Whether this is an iterable response
+        **kwargs: Additional processing options
+
     Returns:
-        Tuple of (response model, updated kwargs)
+        Processed response
     """
-    if mode == Mode.JSON:
-        new_kwargs["response_format"] = {"type": "json_object"}
-    elif mode == Mode.JSON_SCHEMA:
-        new_kwargs["response_format"] = {
-            "type": "json_object",
-            "schema": response_model.model_json_schema()
-        }
-    return response_model, new_kwargs 
+    if response_model is None:
+        return response
+
+    # Get message content
+    message = response.choices[0].message
+
+    # Handle different modes
+    if mode == Mode.FUNCTIONS:
+        return _handle_functions_mode(
+            message, response_model, validation_context, strict
+        )
+    elif mode == Mode.TOOLS:
+        return _handle_tools_mode(message, response_model, validation_context, strict)
+    elif mode == Mode.TOOLS_STRICT:
+        return _handle_tools_strict_mode(
+            message, response_model, validation_context, strict
+        )
+    elif mode == Mode.JSON:
+        return _handle_json_mode(message, response_model, validation_context, strict)
+    else:
+        raise ValueError(f"Unsupported mode: {mode}")
+
+
+def _handle_functions_mode(
+    message: ChatCompletionMessage,
+    response_model: type[BaseModel],
+    validation_context: Optional[dict[str, Any]] = None,
+    strict: bool = True,
+) -> BaseModel:
+    """Handle function call mode response.
+
+    Args:
+        message: Message from API response
+        response_model: Expected response model
+        validation_context: Context for model validation
+        strict: Whether to use strict validation
+
+    Returns:
+        Validated model instance
+    """
+    if not message.function_call:
+        raise ValueError("No function call in response")
+
+    try:
+        # Parse function arguments
+        args = json.loads(message.function_call.arguments)
+
+        # Create and validate model
+        if validation_context:
+            return response_model(**args, **validation_context)
+        return response_model(**args)
+    except (json.JSONDecodeError, ValidationError) as e:
+        if strict:
+            raise
+        return None
+
+
+def _handle_tools_mode(
+    message: ChatCompletionMessage,
+    response_model: type[BaseModel],
+    validation_context: Optional[dict[str, Any]] = None,
+    strict: bool = True,
+) -> BaseModel:
+    """Handle tools mode response.
+
+    Args:
+        message: Message from API response
+        response_model: Expected response model
+        validation_context: Context for model validation
+        strict: Whether to use strict validation
+
+    Returns:
+        Validated model instance
+    """
+    if not message.tool_calls:
+        raise ValueError("No tool calls in response")
+
+    try:
+        # Parse tool arguments
+        args = json.loads(message.tool_calls[0].function.arguments)
+
+        # Create and validate model
+        if validation_context:
+            return response_model(**args, **validation_context)
+        return response_model(**args)
+    except (json.JSONDecodeError, ValidationError) as e:
+        if strict:
+            raise
+        return None
+
+
+def _handle_tools_strict_mode(
+    message: ChatCompletionMessage,
+    response_model: type[BaseModel],
+    validation_context: Optional[dict[str, Any]] = None,
+    strict: bool = True,
+) -> BaseModel:
+    """Handle strict tools mode response.
+
+    Args:
+        message: Message from API response
+        response_model: Expected response model
+        validation_context: Context for model validation
+        strict: Whether to use strict validation
+
+    Returns:
+        Validated model instance
+    """
+    if not message.tool_calls:
+        raise ValueError("No tool calls in response")
+
+    try:
+        # Parse tool arguments
+        args = json.loads(message.tool_calls[0].function.arguments)
+
+        # Create and validate model
+        if validation_context:
+            return response_model(**args, **validation_context)
+        return response_model(**args)
+    except (json.JSONDecodeError, ValidationError) as e:
+        if strict:
+            raise
+        return None
+
+
+def _handle_json_mode(
+    message: ChatCompletionMessage,
+    response_model: type[BaseModel],
+    validation_context: Optional[dict[str, Any]] = None,
+    strict: bool = True,
+) -> BaseModel:
+    """Handle JSON mode response.
+
+    Args:
+        message: Message from API response
+        response_model: Expected response model
+        validation_context: Context for model validation
+        strict: Whether to use strict validation
+
+    Returns:
+        Validated model instance
+    """
+    if not message.content:
+        raise ValueError("No content in response")
+
+    try:
+        # Parse JSON content
+        data = json.loads(message.content)
+
+        # Create and validate model
+        if validation_context:
+            return response_model(**data, **validation_context)
+        return response_model(**data)
+    except (json.JSONDecodeError, ValidationError) as e:
+        if strict:
+            raise
+        return None

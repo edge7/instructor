@@ -1,11 +1,8 @@
-"""Provider system for instructor.
+"""Provider implementations."""
 
-This package contains the base infrastructure for LLM providers and the registry
-for managing them. Each provider implements a common interface defined by BaseProvider,
-allowing for consistent handling of different LLM services.
-"""
+from typing import Dict, Type
 
-from .base import BaseProvider, Mode
-from .registry import ProviderRegistry
+from .base import BaseProvider
 
-__all__ = ["BaseProvider", "Mode", "ProviderRegistry"] 
+# Registry of available providers
+PROVIDERS: Dict[str, Type[BaseProvider]] = {} 

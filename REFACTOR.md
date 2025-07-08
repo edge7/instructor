@@ -14,7 +14,7 @@ Provider implementations must handle dependencies by:
 Reference implementations:
 - `instructor/providers/base/dependencies.py` - Core dependency utilities
 - `instructor/cache/__init__.py` - Example of lazy imports
-- `instructor/__init__.py` - Current conditional imports
+- `instructor/auto_client.py` - Current conditional imports
 - `instructor/auto_client.py` - Provider-specific imports
 
 ### Type System
@@ -106,26 +106,43 @@ Reference implementations:
   - `instructor/function_calls.py` - Type usage examples
   - `instructor/dsl/simple_type.py` - Type handling utilities
 
-## Phase 2: OpenAI Provider - Core Implementation
-- [ ] Create OpenAIProvider class
-  - [ ] Move mode handlers from process_response.py:
-    - [ ] `handle_functions`
-    - [ ] `handle_tools`
-    - [ ] `handle_tools_strict`
-    - [ ] `handle_json_modes`
-  - [ ] Move response processing from function_calls.py
-  - [ ] Add error handling from reask.py
-  - [ ] Verify implementation follows core principles
+## Phase 2: OpenAI Provider - Core Implementation ✅
+- [x] Create OpenAIProvider class
+  - [x] Move mode handlers from process_response.py:
+    - [x] `handle_functions`
+    - [x] `handle_tools`
+    - [x] `handle_tools_strict`
+    - [x] `handle_json_modes`
+  - [x] Move response processing from function_calls.py
+  - [x] Add error handling from reask.py
+  - [x] Verify implementation follows core principles
+  - [x] Fix linting issues:
+    - [x] Remove unused imports (cast, Set)
+    - [x] Update to use built-in set type
+  - [x] Add dependency management:
+    - [x] Create base/dependencies.py with requires_package decorator
+    - [x] Add OpenAI dependency check with min_version="1.0.0"
   Files:
-  - `instructor/providers/openai/__init__.py` - New OpenAI provider
-  - `instructor/providers/openai/response.py` - Response processing
-  - `instructor/providers/openai/errors.py` - Error handling
+  - `instructor/providers/openai/__init__.py` - New OpenAI provider ✅
+  - `instructor/providers/openai/response.py` - Response processing ✅
+  - `instructor/providers/openai/errors.py` - Error handling ✅
+  - `instructor/providers/base/dependencies.py` - Dependency utilities ✅
   Look at:
   - `instructor/process_response.py` - Current mode handlers
   - `instructor/function_calls.py` - Core schema implementation
   - `instructor/reask.py` - Current error handling
-  Current: All handlers in process_response.py
-  Future: Encapsulated in OpenAIProvider class
+  Current: Core implementation complete with dependency management
+  Future: Add tests and streaming support
+
+### Additional Tasks Before Phase 3:
+- [x] Add `requires_package` decorator for OpenAI dependency
+- [ ] Add tests for OpenAIProvider:
+  - [ ] Test each mode handler
+  - [ ] Test response processing
+  - [ ] Test error handling
+  - [ ] Test retry configuration
+- [ ] Add docstring examples
+- [ ] Update type hints for OpenAI v1.0.0 compatibility
 
 ## Phase 3: OpenAI Provider - Streaming
 - [ ] Implement streaming methods:

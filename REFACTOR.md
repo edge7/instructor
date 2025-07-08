@@ -41,6 +41,14 @@ These enhancements establish core patterns that must be followed by all future p
   - [ ] Keep importlib.util.find_spec() for conditional imports
   - [ ] Keep try/except blocks for provider-specific imports
   - [ ] Keep helpful error messages with install instructions
+  Files:
+  - `instructor/providers/base/dependencies.py` - Core dependency utilities
+  - `instructor/providers/base/__init__.py` - Base provider integration
+  - `instructor/providers/*/provider.py` - Provider-specific implementations
+  Look at:
+  - `instructor/__init__.py` - Current conditional imports
+  - `instructor/auto_client.py` - Current provider-specific imports
+  - `instructor/cache/__init__.py` - Example of lazy imports
   Current: Mixed dependency handling in __init__.py and auto_client.py
   Future: Consistent dependency handling across all providers
 
@@ -53,6 +61,15 @@ These enhancements establish core patterns that must be followed by all future p
     - [ ] Maintains tenacity integration
     - [ ] Preserves usage tracking
     - [ ] Keeps error context
+  Files:
+  - `instructor/providers/base/__init__.py` - Base retry configuration
+  - `instructor/retry.py` - Core retry implementation
+  - `instructor/patch.py` - Provider patching with retry support
+  Look at:
+  - `instructor/retry.py` - Current retry implementation
+  - `instructor/patch.py` - Current patching system
+  - `docs/concepts/retrying.md` - Retry documentation
+  - `examples/tenacity-benchmarks/run.py` - Example retry patterns
   Current: Retry logic in retry.py, used by patch.py
   Future: Provider-specific retry configuration with shared core implementation
 
@@ -63,6 +80,15 @@ These enhancements establish core patterns that must be followed by all future p
     - [ ] Keep dsl/simple_type.py implementation
     - [ ] Focus on create method type handling
     - [ ] Maintain existing validation patterns
+  Files:
+  - `instructor/providers/base/__init__.py` - Base type validation
+  - `instructor/dsl/simple_type.py` - Type utilities
+  - `instructor/process_response.py` - Response processing
+  Look at:
+  - `instructor/dsl/simple_type.py` - Current type validation
+  - `tests/dsl/test_simple_type.py` - Type validation tests
+  - `docs/concepts/types.md` - Type system documentation
+  - `docs/learning/validation/field_level_validation.md` - Field validation patterns
   Current: Type handling in dsl/ and process_response.py
   Future: Provider-specific type validation with shared utilities
 
@@ -74,6 +100,14 @@ These enhancements establish core patterns that must be followed by all future p
     - [ ] Keep dsl/iterable.py for list streaming
     - [ ] Keep dsl/partial.py for partial streaming
     - [ ] Add provider-specific stream processing
+  Files:
+  - `instructor/providers/base/__init__.py` - Base streaming methods
+  - `instructor/dsl/iterable.py` - List streaming implementation
+  - `instructor/dsl/partial.py` - Partial streaming implementation
+  Look at:
+  - `instructor/dsl/iterable.py` - Current list streaming
+  - `instructor/dsl/partial.py` - Current partial streaming
+  - `docs/concepts/streaming.md` - Streaming documentation
   Current: Streaming logic in dsl/ modules
   Future: Provider-specific streaming with shared core implementations
 

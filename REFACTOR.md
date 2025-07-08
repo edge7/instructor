@@ -1,5 +1,58 @@
 # Provider System Refactor
 
+## Core Implementation Principles
+These principles establish core patterns that MUST be followed by all provider implementations throughout the refactor:
+
+### Dependency Management
+Provider implementations must handle dependencies by:
+- Using importlib.util.find_spec() for conditional imports
+- Implementing try/except blocks for provider-specific imports
+- Providing helpful error messages with install instructions
+- Using the `requires_package` decorator with proper version constraints
+- Handling imports lazily to avoid unnecessary dependencies
+
+Reference implementations:
+- `instructor/providers/base/dependencies.py` - Core dependency utilities
+- `instructor/cache/__init__.py` - Example of lazy imports
+- `instructor/__init__.py` - Current conditional imports
+- `instructor/auto_client.py` - Provider-specific imports
+
+### Type System
+Provider type handling must:
+- Implement type-related validation methods
+- Re-use existing type utilities from dsl/simple_type.py
+- Focus on create method type handling
+- Maintain existing validation patterns
+
+Reference implementations:
+- `instructor/dsl/simple_type.py` - Type utilities
+- `instructor/function_calls.py` - Core schema implementation
+- `docs/concepts/types.md` - Type system documentation
+
+### Retry System
+Provider retry integration must:
+- Implement retry configuration methods
+- Define provider-specific retry conditions
+- Maintain tenacity integration
+- Preserve usage tracking and error context
+
+Reference implementations:
+- `instructor/retry.py` - Core retry implementation
+- `instructor/patch.py` - Provider patching with retry support
+- `examples/retry/run.py` - Example retry patterns
+
+### Streaming Support
+Provider streaming support must:
+- Implement streaming-related abstract methods
+- Re-use dsl/iterable.py for list streaming
+- Re-use dsl/partial.py for partial streaming
+- Add provider-specific stream processing
+
+Reference implementations:
+- `instructor/dsl/iterable.py` - List streaming implementation
+- `instructor/dsl/partial.py` - Partial streaming implementation
+- `docs/concepts/streaming.md` - Streaming documentation
+
 ## Phase 1: Base Infrastructure ✅
 
 - [x] Create directory structure
@@ -53,93 +106,7 @@
   - `instructor/function_calls.py` - Type usage examples
   - `instructor/dsl/simple_type.py` - Type handling utilities
 
-## Phase 2A: Dependency Management
-- [ ] Re-use dependency handling patterns
-  - [ ] Keep importlib.util.find_spec() for conditional imports
-  - [ ] Keep try/except blocks for provider-specific imports
-  - [ ] Keep helpful error messages with install instructions
-  Files:
-  - `instructor/providers/base/dependencies.py` - Core dependency utilities
-  - `instructor/providers/base/__init__.py` - Base provider integration
-  - `instructor/providers/*/provider.py` - Provider-specific implementations
-  Look at:
-  - `instructor/__init__.py` - Current conditional imports
-  - `instructor/auto_client.py` - Current provider-specific imports
-  - `instructor/cache/__init__.py` - Example of lazy imports
-  - `instructor/client.py` - Base client implementation
-  Current: Mixed dependency handling in __init__.py and auto_client.py
-  Future: Consistent dependency handling across all providers
-
-## Phase 2B: Retry System Integration
-- [ ] Integrate retry system with BaseProvider
-  - [ ] Add retry configuration methods:
-    - [ ] `configure_retry(max_retries, timeout)` - Configure provider-specific retry settings
-    - [ ] `get_retry_conditions()` - Get provider-specific retry conditions
-  - [ ] Keep core retry.py implementation:
-    - [ ] Used by patch.py for all providers
-    - [ ] Maintains tenacity integration
-    - [ ] Preserves usage tracking
-    - [ ] Keeps error context
-  Files:
-  - `instructor/providers/base/__init__.py` - Base retry configuration
-  - `instructor/retry.py` - Core retry implementation
-  - `instructor/patch.py` - Provider patching with retry support
-  Look at:
-  - `instructor/retry.py` - Current retry implementation
-  - `instructor/patch.py` - Current patching system
-  - `instructor/process_response.py` - Response processing with retries
-  - `instructor/client.py` - Client retry configuration
-  - `docs/concepts/retrying.md` - Retry documentation
-  - `examples/tenacity-benchmarks/run.py` - Example retry patterns
-  - `examples/retry/run.py` - Additional retry examples
-  Current: Retry logic in retry.py, used by patch.py
-  Future: Provider-specific retry configuration with shared core implementation
-
-## Phase 2C: Type System Integration
-- [ ] Add type handling to BaseProvider
-  - [ ] Add type-related abstract methods:
-    - [ ] `validate_response_type(response, response_model)` - Provider-specific type validation
-  - [ ] Re-use existing type utilities:
-    - [ ] Keep dsl/simple_type.py implementation
-    - [ ] Focus on create method type handling
-    - [ ] Maintain existing validation patterns
-  Files:
-  - `instructor/providers/base/__init__.py` - Base type validation
-  - `instructor/dsl/simple_type.py` - Type utilities
-  - `instructor/function_calls.py` - Core OpenAISchema implementation
-  - `instructor/process_response.py` - Response processing
-  Look at:
-  - `instructor/function_calls.py` - Current OpenAISchema (core schema spec)
-  - `instructor/dsl/simple_type.py` - Current type validation
-  - `tests/dsl/test_simple_type.py` - Type validation tests
-  - `docs/concepts/types.md` - Type system documentation
-  - `docs/learning/validation/field_level_validation.md` - Field validation patterns
-  Current: Type handling in dsl/ and process_response.py
-  Future: Provider-specific type validation with shared utilities
-
-## Phase 2D: Streaming Support
-- [ ] Add streaming support to BaseProvider
-  - [ ] Add streaming-related abstract methods:
-    - [ ] `process_streaming_response(response, response_model, mode, **kwargs)`
-    - [ ] `process_streaming_response_async(response, response_model, mode, **kwargs)`
-  - [ ] Re-use existing streaming implementations:
-    - [ ] Keep dsl/iterable.py for list streaming
-    - [ ] Keep dsl/partial.py for partial streaming
-    - [ ] Add provider-specific stream processing
-  Files:
-  - `instructor/providers/base/__init__.py` - Base streaming methods
-  - `instructor/dsl/iterable.py` - List streaming implementation
-  - `instructor/dsl/partial.py` - Partial streaming implementation
-  - `instructor/function_calls.py` - Core schema streaming support
-  Look at:
-  - `instructor/dsl/iterable.py` - Current list streaming
-  - `instructor/dsl/partial.py` - Current partial streaming
-  - `instructor/function_calls.py` - Current streaming schema handling
-  - `docs/concepts/streaming.md` - Streaming documentation
-  Current: Streaming logic in dsl/ modules
-  Future: Provider-specific streaming with shared core implementations
-
-## Phase 3A: OpenAI Provider - Core Implementation
+## Phase 2: OpenAI Provider - Core Implementation
 - [ ] Create OpenAIProvider class
   - [ ] Move mode handlers from process_response.py:
     - [ ] `handle_functions`
@@ -148,12 +115,19 @@
     - [ ] `handle_json_modes`
   - [ ] Move response processing from function_calls.py
   - [ ] Add error handling from reask.py
+  - [ ] Verify implementation follows core principles
   Files:
   - `instructor/providers/openai/__init__.py` - New OpenAI provider
   - `instructor/providers/openai/response.py` - Response processing
   - `instructor/providers/openai/errors.py` - Error handling
+  Look at:
+  - `instructor/process_response.py` - Current mode handlers
+  - `instructor/function_calls.py` - Core schema implementation
+  - `instructor/reask.py` - Current error handling
+  Current: All handlers in process_response.py
+  Future: Encapsulated in OpenAIProvider class
 
-## Phase 3B: OpenAI Provider - Streaming
+## Phase 3: OpenAI Provider - Streaming
 - [ ] Implement streaming methods:
   - [ ] Re-use IterableBase for list streaming
   - [ ] Re-use PartialBase for partial streaming
@@ -171,7 +145,7 @@
   Current: All handlers in process_response.py
   Future: Encapsulated in OpenAIProvider class
 
-## Phase 3C: OpenAI Provider - Factory Integration
+## Phase 4: OpenAI Provider - Factory Integration
 - [ ] Update imports and factory functions
   - [ ] Update __init__.py to use provider registry
   - [ ] Maintain backwards compatibility for `from_openai`
@@ -185,7 +159,7 @@
   Current: Direct import of from_openai function
   Future: Factory function uses provider registry
 
-## Phase 4A: Anthropic Provider - Core Implementation
+## Phase 5A: Anthropic Provider - Core Implementation
 - [ ] Move message format handling
   - [ ] System message extraction
   - [ ] Tool descriptions formatting
@@ -200,7 +174,7 @@
   Current: Mixed handlers across files
   Future: Encapsulated in AnthropicProvider
 
-## Phase 4B: Anthropic Provider - Error Handling
+## Phase 5B: Anthropic Provider - Error Handling
 - [ ] Move error handling
   - [ ] Validation error handling
   - [ ] Reask logic
@@ -212,14 +186,14 @@
   Current: reask_anthropic_json in reask.py
   Future: AnthropicProvider.handle_error
 
-## Phase 4C: Anthropic Provider - Streaming
+## Phase 5C: Anthropic Provider - Streaming
 - [ ] Implement streaming support:
   - [ ] Re-use OpenAI streaming patterns where possible
   - [ ] Add Anthropic-specific streaming handlers
   Files:
   - `instructor/providers/anthropic/streaming.py` - Streaming implementation
 
-## Phase 5: Cohere Provider
+## Phase 6: Cohere Provider
 - [ ] Move message format handling
   - [ ] Convert to chat_history format
   - [ ] Handle role mappings
@@ -241,7 +215,7 @@
   Current: parse_cohere_tools in OpenAISchema
   Future: CohereProvider._parse_response
 
-## Phase 6A: Google Provider - Core Implementation
+## Phase 7A: Google Provider - Core Implementation
 - [ ] Move multimodal content handling
   Files:
   - `instructor/providers/google/__init__.py` - New Google provider
@@ -252,7 +226,7 @@
   Current: Scattered across process_response.py
   Future: Encapsulated in GoogleProvider
 
-## Phase 6B: Google Provider - Advanced Features
+## Phase 7B: Google Provider - Advanced Features
 - [ ] Move parallel processing support
   Files:
   - `instructor/providers/google/parallel.py` - Parallel processing
@@ -271,7 +245,7 @@
   Current: Basic streaming support
   Future: Full streaming capabilities
 
-## Phase 7A: Mistral Provider
+## Phase 8A: Mistral Provider
 - [ ] Mistral
   - [ ] Tools mode
   - [ ] Structured outputs
@@ -284,7 +258,7 @@
   Current: Mode-specific handlers
   Future: MistralProvider implements all modes
 
-## Phase 7B: Bedrock Provider
+## Phase 8B: Bedrock Provider
 - [ ] Bedrock
   - [ ] System message format
   - [ ] Response structure

@@ -68,6 +68,7 @@ These enhancements establish core patterns that must be followed by all future p
   - `instructor/__init__.py` - Current conditional imports
   - `instructor/auto_client.py` - Current provider-specific imports
   - `instructor/cache/__init__.py` - Example of lazy imports
+  - `instructor/client.py` - Base client implementation
   Current: Mixed dependency handling in __init__.py and auto_client.py
   Future: Consistent dependency handling across all providers
 
@@ -87,8 +88,11 @@ These enhancements establish core patterns that must be followed by all future p
   Look at:
   - `instructor/retry.py` - Current retry implementation
   - `instructor/patch.py` - Current patching system
+  - `instructor/process_response.py` - Response processing with retries
+  - `instructor/client.py` - Client retry configuration
   - `docs/concepts/retrying.md` - Retry documentation
   - `examples/tenacity-benchmarks/run.py` - Example retry patterns
+  - `examples/retry/run.py` - Additional retry examples
   Current: Retry logic in retry.py, used by patch.py
   Future: Provider-specific retry configuration with shared core implementation
 
@@ -102,8 +106,10 @@ These enhancements establish core patterns that must be followed by all future p
   Files:
   - `instructor/providers/base/__init__.py` - Base type validation
   - `instructor/dsl/simple_type.py` - Type utilities
+  - `instructor/function_calls.py` - Core OpenAISchema implementation
   - `instructor/process_response.py` - Response processing
   Look at:
+  - `instructor/function_calls.py` - Current OpenAISchema (core schema spec)
   - `instructor/dsl/simple_type.py` - Current type validation
   - `tests/dsl/test_simple_type.py` - Type validation tests
   - `docs/concepts/types.md` - Type system documentation
@@ -123,14 +129,17 @@ These enhancements establish core patterns that must be followed by all future p
   - `instructor/providers/base/__init__.py` - Base streaming methods
   - `instructor/dsl/iterable.py` - List streaming implementation
   - `instructor/dsl/partial.py` - Partial streaming implementation
+  - `instructor/function_calls.py` - Core schema streaming support
   Look at:
   - `instructor/dsl/iterable.py` - Current list streaming
   - `instructor/dsl/partial.py` - Current partial streaming
+  - `instructor/function_calls.py` - Current streaming schema handling
   - `docs/concepts/streaming.md` - Streaming documentation
   Current: Streaming logic in dsl/ modules
   Future: Provider-specific streaming with shared core implementations
 
 ## Phase 3: OpenAI Provider Migration
+Note: OpenAISchema is not OpenAI-specific, but rather the core schema specification used by all providers. It follows the OpenAI function calling schema format as it's become a de-facto standard.
 
 - [ ] Create OpenAIProvider class
   - [ ] Move mode handlers from process_response.py:
@@ -143,12 +152,33 @@ These enhancements establish core patterns that must be followed by all future p
   - [ ] Implement streaming methods:
     - [ ] Re-use IterableBase for list streaming
     - [ ] Re-use PartialBase for partial streaming
+  Files:
+  - `instructor/providers/openai/__init__.py` - New OpenAI provider
+  - `instructor/providers/openai/response.py` - Response processing
+  - `instructor/providers/openai/errors.py` - Error handling
+  - `instructor/providers/openai/streaming.py` - Streaming implementation
+  Look at:
+  - `instructor/process_response.py` - Current mode handlers
+  - `instructor/function_calls.py` - Core schema implementation
+  - `instructor/reask.py` - Current error handling
+  - `instructor/dsl/iterable.py` - List streaming base
+  - `instructor/dsl/partial.py` - Partial streaming base
+  - `instructor/client.py` - Current OpenAI client implementation
+  - `instructor/patch.py` - Current OpenAI patching
+  - `tests/llm/test_openai/` - OpenAI-specific tests
   Current: All handlers in process_response.py
   Future: Encapsulated in OpenAIProvider class
 
 - [ ] Update imports and factory functions
   - [ ] Update __init__.py to use provider registry
   - [ ] Maintain backwards compatibility for `from_openai`
+  Files:
+  - `instructor/__init__.py` - Updated imports
+  - `instructor/auto_client.py` - Updated factory functions
+  Look at:
+  - `instructor/client.py` - Current client initialization
+  - `instructor/auto_client.py` - Current factory pattern
+  - `tests/test_auto_client.py` - Factory function tests
   Current: Direct import of from_openai function
   Future: Factory function uses provider registry
 
@@ -162,12 +192,24 @@ These enhancements establish core patterns that must be followed by all future p
   - [ ] Implement streaming support:
     - [ ] Re-use OpenAI streaming patterns where possible
     - [ ] Add Anthropic-specific streaming handlers
+  Files:
+  - `instructor/providers/anthropic/__init__.py` - New Anthropic provider
+  - `instructor/providers/anthropic/messages.py` - Message handling
+  - `instructor/providers/anthropic/tools.py` - Tool handling
+  Look at:
+  - `instructor/client_anthropic.py` - Current implementation
+  - `tests/llm/test_anthropic/` - Anthropic-specific tests
   Current: Mixed handlers across files
   Future: Encapsulated in AnthropicProvider
 
 - [ ] Move error handling
   - [ ] Validation error handling
   - [ ] Reask logic
+  Files:
+  - `instructor/providers/anthropic/errors.py` - Error handling
+  Look at:
+  - `instructor/reask.py` - Current reask logic
+  - `tests/llm/test_anthropic/evals/` - Error handling tests
   Current: reask_anthropic_json in reask.py
   Future: AnthropicProvider.handle_error
 
@@ -176,25 +218,49 @@ These enhancements establish core patterns that must be followed by all future p
   - [ ] Convert to chat_history format
   - [ ] Handle role mappings
   - [ ] Implement streaming methods
+  Files:
+  - `instructor/providers/cohere/__init__.py` - New Cohere provider
+  - `instructor/providers/cohere/chat.py` - Chat handling
+  Look at:
+  - `instructor/client_cohere.py` - Current implementation
+  - `tests/llm/test_cohere/` - Cohere-specific tests
   Current: Mixed handlers
   Future: CohereProvider implementation
 
 - [ ] Move response processing
+  Files:
+  - `instructor/providers/cohere/response.py` - Response processing
+  Look at:
+  - `instructor/process_response.py` - Current processing
   Current: parse_cohere_tools in OpenAISchema
   Future: CohereProvider._parse_response
 
 ### Google/Vertex
 - [ ] Move multimodal content handling
+  Files:
+  - `instructor/providers/google/__init__.py` - New Google provider
+  - `instructor/providers/google/multimodal.py` - Content handling
+  Look at:
+  - `instructor/multimodal.py` - Current implementation
+  - `tests/llm/test_gemini/` - Google-specific tests
   Current: Scattered across process_response.py
   Future: Encapsulated in GoogleProvider
 
 - [ ] Move parallel processing support
+  Files:
+  - `instructor/providers/google/parallel.py` - Parallel processing
+  Look at:
+  - `instructor/dsl/parallel.py` - Current implementation
   Current: handle_vertexai_parallel_tools
   Future: GoogleProvider._handle_parallel
 
 - [ ] Add streaming support
   - [ ] Implement Google-specific streaming
   - [ ] Handle async streaming properly
+  Files:
+  - `instructor/providers/google/streaming.py` - Streaming support
+  Look at:
+  - `instructor/dsl/iterable.py` - Current streaming base
   Current: Basic streaming support
   Future: Full streaming capabilities
 
@@ -203,6 +269,11 @@ These enhancements establish core patterns that must be followed by all future p
   - [ ] Tools mode
   - [ ] Structured outputs
   - [ ] Streaming implementation
+  Files:
+  - `instructor/providers/mistral/` - New Mistral provider
+  Look at:
+  - `instructor/client_mistral.py` - Current implementation
+  - `tests/llm/test_mistral/` - Mistral-specific tests
   Current: Mode-specific handlers
   Future: MistralProvider implements all modes
 
@@ -210,15 +281,7 @@ These enhancements establish core patterns that must be followed by all future p
   - [ ] System message format
   - [ ] Response structure
   - [ ] Streaming support
-  Current: Basic handlers
-  Future: BedrockProvider handles all formats
-
-[... remaining providers follow same pattern ...]
-
-## Phase 5: Testing Infrastructure
-
-- [ ] Create test structure
-  ```bash
-  mkdir -p tests/providers/{base,openai,anthropic,google,mistral,cohere}
-  touch tests/providers/conftest.py
-  ```
+  Files:
+  - `instructor/providers/bedrock/` - New Bedrock provider
+  Look at:
+  - `

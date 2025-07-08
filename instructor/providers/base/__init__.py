@@ -4,9 +4,7 @@ from abc import ABC, abstractmethod
 from typing import (
     Any,
     ClassVar,
-    Dict,
     Optional,
-    Set,
     TypeVar,
     Union,
 )
@@ -20,6 +18,7 @@ import pkg_resources
 from ...mode import Mode
 from ...dsl.partial import Partial
 from ...hooks import Hooks
+from ...retry import retry_sync, retry_async
 
 T = TypeVar("T", bound=Union[BaseModel, "Iterable[Any]", "Partial[Any]"])
 
@@ -38,12 +37,6 @@ class BaseProvider(ABC):
 
     def __init__(self) -> None:
         """Initialize base provider and verify package requirements."""
-        self._retry_config: dict[str, Any] = {
-            "max_retries": 3,
-            "timeout": 60,
-            "conditions": set(),
-        }
-        
         # Check package requirements
         for package_name, min_version in self.required_packages.items():
             # Check if package is installed
@@ -109,24 +102,23 @@ class BaseProvider(ABC):
         """
         pass
 
-    @abstractmethod
     def create(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T] | None = None,
-        retry_config: int | Retrying | AsyncRetrying = 3,
+        max_retries: int | Retrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
         hooks: Hooks | None = None,
         **kwargs: Any,
-    ) -> T | Any | Awaitable[T] | Awaitable[Any]:
+    ) -> T | Any:
         """Create a completion and return the processed response.
 
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            retry_config: Number of retries or a Retrying/AsyncRetrying instance
+            max_retries: Number of retries or a Retrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -136,26 +128,311 @@ class BaseProvider(ABC):
         Returns:
             Processed response matching response_model type
         """
-        pass
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
 
-    @abstractmethod
-    def create_iterable(
+        def create_fn(*args: Any, **kwargs: Any) -> Any:
+            return self.client.chat.completions.create(**kwargs)
+
+        return retry_sync(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )
+
+    async def async_create(
         self,
         messages: list[dict[str, Any]],
-        response_model: type[T],
-        retry_config: int | Retrying | AsyncRetrying = 3,
+        response_model: type[T] | None = None,
+        max_retries: int | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
         hooks: Hooks | None = None,
         **kwargs: Any,
-    ) -> Generator[T, None, None] | AsyncGenerator[T, None]:
+    ) -> T | Any:
+        """Create a completion asynchronously and return the processed response.
+
+        Args:
+            messages: List of chat messages
+            response_model: Expected response model type
+            max_retries: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            Processed response matching response_model type
+        """
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
+
+        async def create_fn(*args: Any, **kwargs: Any) -> Any:
+            return await self.client.chat.completions.create(**kwargs)
+
+        return await retry_async(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )
+
+    def create_with_completion(
+        self,
+        messages: list[dict[str, Any]],
+        response_model: type[T],
+        max_retries: int | Retrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        **kwargs: Any,
+    ) -> tuple[T, Any]:
+        """Create a completion and return both the processed response and raw completion.
+
+        Args:
+            messages: List of chat messages
+            response_model: Expected response model type
+            max_retries: Number of retries or a Retrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            Tuple of (processed_response, raw_response)
+        """
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
+
+        def create_fn(*args: Any, **kwargs: Any) -> Any:
+            completion = self.client.chat.completions.create(**kwargs)
+            result = self.process_response(
+                completion,
+                response_model,
+                kwargs.get("mode", Mode.FUNCTIONS),
+                validation_context=validation_context,
+                context=context,
+                strict=strict,
+            )
+            return result, completion
+
+        return retry_sync(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )
+
+    async def async_create_with_completion(
+        self,
+        messages: list[dict[str, Any]],
+        response_model: type[T],
+        max_retries: int | AsyncRetrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        **kwargs: Any,
+    ) -> tuple[T, Any]:
+        """Create a completion asynchronously and return both the processed response and raw completion.
+
+        Args:
+            messages: List of chat messages
+            response_model: Expected response model type
+            max_retries: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            Tuple of (processed_response, raw_response)
+        """
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
+
+        async def create_fn(*args: Any, **kwargs: Any) -> Any:
+            completion = await self.client.chat.completions.create(**kwargs)
+            result = self.process_response(
+                completion,
+                response_model,
+                kwargs.get("mode", Mode.FUNCTIONS),
+                validation_context=validation_context,
+                context=context,
+                strict=strict,
+            )
+            return result, completion
+
+        return await retry_async(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )
+
+    def create_partial(
+        self,
+        response_model: type[T],
+        messages: list[dict[str, Any]],
+        max_retries: int | Retrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        **kwargs: Any,
+    ) -> Generator[T, None, None]:
+        """Create a streaming completion that yields partial results.
+
+        Args:
+            response_model: Expected response model type
+            messages: List of chat messages
+            max_retries: Number of retries or a Retrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            Generator yielding partial results
+        """
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
+        request_params["stream"] = True
+
+        def create_fn(*args: Any, **kwargs: Any) -> Generator[T, None, None]:
+            stream = self.client.chat.completions.create(**kwargs)
+            for chunk in stream:
+                result = self.process_response(
+                    chunk,
+                    response_model,
+                    kwargs.get("mode", Mode.FUNCTIONS),
+                    validation_context=validation_context,
+                    context=context,
+                    strict=strict,
+                    partial=True,
+                )
+                if result is not None:
+                    yield result
+
+        return retry_sync(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )
+
+    async def async_create_partial(
+        self,
+        response_model: type[T],
+        messages: list[dict[str, Any]],
+        max_retries: int | AsyncRetrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        **kwargs: Any,
+    ) -> AsyncGenerator[T, None]:
+        """Create a streaming completion that yields partial results asynchronously.
+
+        Args:
+            response_model: Expected response model type
+            messages: List of chat messages
+            max_retries: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            AsyncGenerator yielding partial results
+        """
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
+        request_params["stream"] = True
+
+        async def create_fn(*args: Any, **kwargs: Any) -> AsyncGenerator[T, None]:
+            stream = await self.client.chat.completions.create(**kwargs)
+            async for chunk in stream:
+                result = self.process_response(
+                    chunk,
+                    response_model,
+                    kwargs.get("mode", Mode.FUNCTIONS),
+                    validation_context=validation_context,
+                    context=context,
+                    strict=strict,
+                    partial=True,
+                )
+                if result is not None:
+                    yield result
+
+        return await retry_async(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )
+
+    def create_iterable(
+        self,
+        messages: list[dict[str, Any]],
+        response_model: type[T],
+        max_retries: int | Retrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        **kwargs: Any,
+    ) -> Generator[T, None, None]:
         """Create a streaming completion that yields list items.
 
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            retry_config: Number of retries or a Retrying/AsyncRetrying instance
+            max_retries: Number of retries or a Retrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -165,4 +442,92 @@ class BaseProvider(ABC):
         Returns:
             Generator yielding list items
         """
-        pass
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
+        request_params["stream"] = True
+
+        def create_fn(*args: Any, **kwargs: Any) -> Generator[T, None, None]:
+            stream = self.client.chat.completions.create(**kwargs)
+            for chunk in stream:
+                result = self.process_response(
+                    chunk,
+                    response_model,
+                    kwargs.get("mode", Mode.FUNCTIONS),
+                    validation_context=validation_context,
+                    context=context,
+                    strict=strict,
+                    iterable=True,
+                )
+                if result is not None:
+                    yield result
+
+        return retry_sync(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )
+
+    async def async_create_iterable(
+        self,
+        messages: list[dict[str, Any]],
+        response_model: type[T],
+        max_retries: int | AsyncRetrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        **kwargs: Any,
+    ) -> AsyncGenerator[T, None]:
+        """Create a streaming completion that yields list items asynchronously.
+
+        Args:
+            messages: List of chat messages
+            response_model: Expected response model type
+            max_retries: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            AsyncGenerator yielding list items
+        """
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, kwargs.get("mode", Mode.FUNCTIONS), **kwargs)
+        request_params["messages"] = messages
+        request_params["stream"] = True
+
+        async def create_fn(*args: Any, **kwargs: Any) -> AsyncGenerator[T, None]:
+            stream = await self.client.chat.completions.create(**kwargs)
+            async for chunk in stream:
+                result = self.process_response(
+                    chunk,
+                    response_model,
+                    kwargs.get("mode", Mode.FUNCTIONS),
+                    validation_context=validation_context,
+                    context=context,
+                    strict=strict,
+                    iterable=True,
+                )
+                if result is not None:
+                    yield result
+
+        return await retry_async(
+            func=create_fn,
+            response_model=response_model,
+            context=context,
+            max_retries=max_retries,
+            args=[],
+            kwargs=request_params,
+            strict=strict,
+            mode=kwargs.get("mode", Mode.FUNCTIONS),
+            hooks=hooks,
+        )

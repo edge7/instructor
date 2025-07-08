@@ -1,7 +1,7 @@
 """OpenAI provider implementation."""
 
 from typing import Any, ClassVar, Optional, TypeVar, Union
-from collections.abc import Generator
+from collections.abc import Generator, AsyncGenerator
 from collections.abc import Iterable
 from tenacity import Retrying, AsyncRetrying
 from pydantic import BaseModel
@@ -36,8 +36,15 @@ class OpenAIProvider(BaseProvider):
         """
         super().__init__()
         self.client = client or openai.OpenAI()
-        # Set default retry conditions for OpenAI
-        self._retry_config["conditions"] = {"rate_limit_error", "timeout_error", "server_error"}
+        
+        # Configure retry conditions for OpenAI
+        self._retry_handler.configure(
+            conditions={
+                "rate_limit_error",
+                "timeout_error",
+                "server_error"
+            }
+        )
 
     def prepare_request(
         self, response_model: Any, mode: Mode, **kwargs: Any
@@ -73,28 +80,6 @@ class OpenAIProvider(BaseProvider):
         # Add any remaining kwargs
         request_params.update(kwargs)
 
-        # Handle different modes
-        if mode == Mode.FUNCTIONS:
-            request_params["functions"] = [response_model.openai_schema]
-            request_params["function_call"] = {
-                "name": response_model.openai_schema["name"]
-            }
-        elif mode == Mode.TOOLS:
-            request_params["tools"] = [
-                {"type": "function", "function": response_model.openai_schema}
-            ]
-            request_params["tool_choice"] = {
-                "type": "function",
-                "function": {"name": response_model.openai_schema["name"]},
-            }
-        elif mode == Mode.TOOLS_STRICT:
-            request_params["tools"] = [
-                {"type": "function", "function": response_model.openai_schema}
-            ]
-            request_params["tool_choice"] = "auto"
-        elif mode == Mode.JSON:
-            request_params["response_format"] = {"type": "json_object"}
-
         return request_params
 
     def process_response(
@@ -126,13 +111,13 @@ class OpenAIProvider(BaseProvider):
             response: Raw API response
             **kwargs: Additional error handling options
         """
-        handle_openai_error(error, response)
+        handle_openai_error(error, response, **kwargs)
 
     def create(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T] | None = None,
-        retry_config: int | Retrying | AsyncRetrying = 3,
+        retry_config: int | Retrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -145,7 +130,7 @@ class OpenAIProvider(BaseProvider):
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            retry_config: Number of retries or a Retrying/AsyncRetrying instance
+            retry_config: Number of retries or a Retrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -191,11 +176,77 @@ class OpenAIProvider(BaseProvider):
                     self.handle_error(e, completion if "completion" in locals() else None)
                     raise
 
+    async def async_create(
+        self,
+        messages: list[dict[str, Any]],
+        response_model: type[T] | None = None,
+        retry_config: int | AsyncRetrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        mode: Mode = Mode.FUNCTIONS,
+        **kwargs: Any,
+    ) -> T | Any:
+        """Create a completion asynchronously and return the processed response.
+
+        Args:
+            messages: List of chat messages
+            response_model: Expected response model type
+            retry_config: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            mode: Request mode (default: Mode.FUNCTIONS)
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            Processed response matching response_model type
+        """
+        if not isinstance(self.client, openai.AsyncOpenAI):
+            raise TypeError("Async operations require an AsyncOpenAI client")
+
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, mode, **kwargs)
+        request_params["messages"] = messages
+
+        # Create completion with retries
+        async for attempt in AsyncRetrying(retry_config):
+            with attempt:
+                try:
+                    # Run pre-completion hooks
+                    if hooks:
+                        hooks.pre_completion(request_params)
+
+                    # Create completion
+                    completion = await self.client.chat.completions.create(**request_params)
+
+                    # Run post-completion hooks
+                    if hooks:
+                        hooks.post_completion(completion)
+
+                    # Process response
+                    result = self.process_response(
+                        completion,
+                        response_model,
+                        mode,
+                        validation_context=validation_context,
+                        context=context,
+                        strict=strict,
+                    )
+
+                    return result
+
+                except Exception as e:
+                    self.handle_error(e, completion if "completion" in locals() else None)
+                    raise
+
     def create_with_completion(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T],
-        max_retries: int | Retrying = 3,
+        retry_config: int | Retrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -208,7 +259,7 @@ class OpenAIProvider(BaseProvider):
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            max_retries: Maximum number of retries or Retrying instance
+            retry_config: Number of retries or a Retrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -224,7 +275,7 @@ class OpenAIProvider(BaseProvider):
         request_params["messages"] = messages
 
         # Create completion with retries
-        for attempt in Retrying(max_retries):
+        for attempt in Retrying(retry_config):
             with attempt:
                 try:
                     # Run pre-completion hooks
@@ -256,11 +307,79 @@ class OpenAIProvider(BaseProvider):
                     )
                     raise
 
+    async def async_create_with_completion(
+        self,
+        messages: list[dict[str, Any]],
+        response_model: type[T],
+        retry_config: int | AsyncRetrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        mode: Mode = Mode.FUNCTIONS,
+        **kwargs: Any,
+    ) -> tuple[T, ChatCompletion]:
+        """Create a completion asynchronously and return both the processed response and raw completion.
+
+        Args:
+            messages: List of chat messages
+            response_model: Expected response model type
+            retry_config: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            mode: Request mode (default: Mode.FUNCTIONS)
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            Tuple of (processed_response, raw_response)
+        """
+        if not isinstance(self.client, openai.AsyncOpenAI):
+            raise TypeError("Async operations require an AsyncOpenAI client")
+
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, mode, **kwargs)
+        request_params["messages"] = messages
+
+        # Create completion with retries
+        async for attempt in AsyncRetrying(retry_config):
+            with attempt:
+                try:
+                    # Run pre-completion hooks
+                    if hooks:
+                        hooks.pre_completion(request_params)
+
+                    # Create completion
+                    completion = await self.client.chat.completions.create(**request_params)
+
+                    # Run post-completion hooks
+                    if hooks:
+                        hooks.post_completion(completion)
+
+                    # Process response
+                    result = self.process_response(
+                        completion,
+                        response_model,
+                        mode,
+                        validation_context=validation_context,
+                        context=context,
+                        strict=strict,
+                    )
+
+                    return result, completion
+
+                except Exception as e:
+                    self.handle_error(
+                        e, completion if "completion" in locals() else None
+                    )
+                    raise
+
     def create_partial(
         self,
         response_model: type[T],
         messages: list[dict[str, Any]],
-        max_retries: int | Retrying = 3,
+        retry_config: int | Retrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -273,7 +392,7 @@ class OpenAIProvider(BaseProvider):
         Args:
             response_model: Expected response model type
             messages: List of chat messages
-            max_retries: Maximum number of retries or Retrying instance
+            retry_config: Number of retries or a Retrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -290,7 +409,7 @@ class OpenAIProvider(BaseProvider):
         request_params["stream"] = True
 
         # Create streaming completion with retries
-        for attempt in Retrying(max_retries):
+        for attempt in Retrying(retry_config):
             with attempt:
                 try:
                     # Run pre-completion hooks
@@ -324,11 +443,82 @@ class OpenAIProvider(BaseProvider):
                     self.handle_error(e, None)
                     raise
 
+    async def async_create_partial(
+        self,
+        response_model: type[T],
+        messages: list[dict[str, Any]],
+        retry_config: int | AsyncRetrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        mode: Mode = Mode.FUNCTIONS,
+        **kwargs: Any,
+    ) -> AsyncGenerator[T, None]:
+        """Create a streaming completion that yields partial results asynchronously.
+
+        Args:
+            response_model: Expected response model type
+            messages: List of chat messages
+            retry_config: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            mode: Request mode (default: Mode.FUNCTIONS)
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            AsyncGenerator yielding partial results
+        """
+        if not isinstance(self.client, openai.AsyncOpenAI):
+            raise TypeError("Async operations require an AsyncOpenAI client")
+
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, mode, **kwargs)
+        request_params["messages"] = messages
+        request_params["stream"] = True
+
+        # Create streaming completion with retries
+        async for attempt in AsyncRetrying(retry_config):
+            with attempt:
+                try:
+                    # Run pre-completion hooks
+                    if hooks:
+                        hooks.pre_completion(request_params)
+
+                    # Create streaming completion
+                    stream = await self.client.chat.completions.create(**request_params)
+
+                    # Process stream chunks
+                    async for chunk in stream:
+                        # Run post-chunk hooks
+                        if hooks:
+                            hooks.post_completion(chunk)
+
+                        # Process chunk
+                        result = self.process_response(
+                            chunk,
+                            response_model,
+                            mode,
+                            validation_context=validation_context,
+                            context=context,
+                            strict=strict,
+                            partial=True,
+                        )
+
+                        if result is not None:
+                            yield result
+
+                except Exception as e:
+                    self.handle_error(e, None)
+                    raise
+
     def create_iterable(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T],
-        retry_config: int | Retrying | AsyncRetrying = 3,
+        retry_config: int | Retrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -341,7 +531,7 @@ class OpenAIProvider(BaseProvider):
         Args:
             messages: List of chat messages
             response_model: Expected response model type
-            retry_config: Number of retries or a Retrying/AsyncRetrying instance
+            retry_config: Number of retries or a Retrying instance
             validation_context: Context for model validation
             context: Additional context for processing
             strict: Whether to use strict validation
@@ -370,6 +560,77 @@ class OpenAIProvider(BaseProvider):
 
                     # Process stream chunks
                     for chunk in stream:
+                        # Run post-chunk hooks
+                        if hooks:
+                            hooks.post_completion(chunk)
+
+                        # Process chunk
+                        result = self.process_response(
+                            chunk,
+                            response_model,
+                            mode,
+                            validation_context=validation_context,
+                            context=context,
+                            strict=strict,
+                            iterable=True,
+                        )
+
+                        if result is not None:
+                            yield result
+
+                except Exception as e:
+                    self.handle_error(e, None)
+                    raise
+
+    async def async_create_iterable(
+        self,
+        messages: list[dict[str, Any]],
+        response_model: type[T],
+        retry_config: int | AsyncRetrying = 3,
+        validation_context: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        strict: bool = True,
+        hooks: Hooks | None = None,
+        mode: Mode = Mode.FUNCTIONS,
+        **kwargs: Any,
+    ) -> AsyncGenerator[T, None]:
+        """Create a streaming completion that yields list items asynchronously.
+
+        Args:
+            messages: List of chat messages
+            response_model: Expected response model type
+            retry_config: Number of retries or an AsyncRetrying instance
+            validation_context: Context for model validation
+            context: Additional context for processing
+            strict: Whether to use strict validation
+            hooks: Hooks for the completion process
+            mode: Request mode (default: Mode.FUNCTIONS)
+            **kwargs: Additional provider-specific options
+
+        Returns:
+            AsyncGenerator yielding list items
+        """
+        if not isinstance(self.client, openai.AsyncOpenAI):
+            raise TypeError("Async operations require an AsyncOpenAI client")
+
+        # Prepare request parameters
+        request_params = self.prepare_request(response_model, mode, **kwargs)
+        request_params["messages"] = messages
+        request_params["stream"] = True
+
+        # Create streaming completion with retries
+        async for attempt in AsyncRetrying(retry_config):
+            with attempt:
+                try:
+                    # Run pre-completion hooks
+                    if hooks:
+                        hooks.pre_completion(request_params)
+
+                    # Create streaming completion
+                    stream = await self.client.chat.completions.create(**request_params)
+
+                    # Process stream chunks
+                    async for chunk in stream:
                         # Run post-chunk hooks
                         if hooks:
                             hooks.post_completion(chunk)

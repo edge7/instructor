@@ -1,20 +1,18 @@
 """OpenAI provider implementation."""
 
-from typing import Any, ClassVar, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 from collections.abc import Generator, AsyncGenerator
 from collections.abc import Iterable
-from tenacity import Retrying, AsyncRetrying
 from pydantic import BaseModel
 import openai
 from openai.types.chat import ChatCompletion
-from openai._types import NotGiven, Undefined
+from tenacity import AsyncRetrying, Retrying
 
 from ..base import BaseProvider
 from ...mode import Mode
 from ...dsl.partial import Partial
 from ...hooks import Hooks
 from .response import process_openai_response
-from .errors import handle_openai_error
 
 T = TypeVar("T", bound=Union[BaseModel, "Iterable[Any]", "Partial[Any]"])
 
@@ -36,15 +34,6 @@ class OpenAIProvider(BaseProvider):
         """
         super().__init__()
         self.client = client or openai.OpenAI()
-        
-        # Configure retry conditions for OpenAI
-        self._retry_handler.configure(
-            conditions={
-                "rate_limit_error",
-                "timeout_error",
-                "server_error"
-            }
-        )
 
     def prepare_request(
         self, response_model: Any, mode: Mode, **kwargs: Any
@@ -103,215 +92,22 @@ class OpenAIProvider(BaseProvider):
             **kwargs
         )
 
-    def handle_error(self, error: Exception, response: Any, **kwargs: Any) -> None:
-        """Handle OpenAI API errors.
-
-        Args:
-            error: The error that occurred
-            response: Raw API response
-            **kwargs: Additional error handling options
-        """
-        handle_openai_error(error, response, **kwargs)
-
-    def create(
-        self,
-        messages: list[dict[str, Any]],
-        response_model: type[T] | None = None,
-        retry_config: int | Retrying = 3,
-        validation_context: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
-        strict: bool = True,
-        hooks: Hooks | None = None,
-        mode: Mode = Mode.FUNCTIONS,
-        **kwargs: Any,
-    ) -> T | Any:
-        """Create a completion and return the processed response.
-
-        Args:
-            messages: List of chat messages
-            response_model: Expected response model type
-            retry_config: Number of retries or a Retrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Processed response matching response_model type
-        """
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-
-        # Create completion with retries
-        for attempt in Retrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create completion
-                    completion = self.client.chat.completions.create(**request_params)
-
-                    # Run post-completion hooks
-                    if hooks:
-                        hooks.post_completion(completion)
-
-                    # Process response
-                    result = self.process_response(
-                        completion,
-                        response_model,
-                        mode,
-                        validation_context=validation_context,
-                        context=context,
-                        strict=strict,
-                    )
-
-                    return result
-
-                except Exception as e:
-                    self.handle_error(e, completion if "completion" in locals() else None)
-                    raise
-
-    async def async_create(
-        self,
-        messages: list[dict[str, Any]],
-        response_model: type[T] | None = None,
-        retry_config: int | AsyncRetrying = 3,
-        validation_context: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
-        strict: bool = True,
-        hooks: Hooks | None = None,
-        mode: Mode = Mode.FUNCTIONS,
-        **kwargs: Any,
-    ) -> T | Any:
-        """Create a completion asynchronously and return the processed response.
-
-        Args:
-            messages: List of chat messages
-            response_model: Expected response model type
-            retry_config: Number of retries or an AsyncRetrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Processed response matching response_model type
-        """
+    def _check_async_client(self) -> None:
+        """Check if client is AsyncOpenAI."""
         if not isinstance(self.client, openai.AsyncOpenAI):
             raise TypeError("Async operations require an AsyncOpenAI client")
 
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-
-        # Create completion with retries
-        async for attempt in AsyncRetrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create completion
-                    completion = await self.client.chat.completions.create(**request_params)
-
-                    # Run post-completion hooks
-                    if hooks:
-                        hooks.post_completion(completion)
-
-                    # Process response
-                    result = self.process_response(
-                        completion,
-                        response_model,
-                        mode,
-                        validation_context=validation_context,
-                        context=context,
-                        strict=strict,
-                    )
-
-                    return result
-
-                except Exception as e:
-                    self.handle_error(e, completion if "completion" in locals() else None)
-                    raise
-
-    def create_with_completion(
-        self,
-        messages: list[dict[str, Any]],
-        response_model: type[T],
-        retry_config: int | Retrying = 3,
-        validation_context: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
-        strict: bool = True,
-        hooks: Hooks | None = None,
-        mode: Mode = Mode.FUNCTIONS,
-        **kwargs: Any,
-    ) -> tuple[T, ChatCompletion]:
-        """Create a completion and return both the processed response and raw completion.
-
-        Args:
-            messages: List of chat messages
-            response_model: Expected response model type
-            retry_config: Number of retries or a Retrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Tuple of (processed_response, raw_response)
-        """
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-
-        # Create completion with retries
-        for attempt in Retrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create completion
-                    completion = self.client.chat.completions.create(**request_params)
-
-                    # Run post-completion hooks
-                    if hooks:
-                        hooks.post_completion(completion)
-
-                    # Process response
-                    result = self.process_response(
-                        completion,
-                        response_model,
-                        mode,
-                        validation_context=validation_context,
-                        context=context,
-                        strict=strict,
-                    )
-
-                    return result, completion
-
-                except Exception as e:
-                    self.handle_error(
-                        e, completion if "completion" in locals() else None
-                    )
-                    raise
+    def _prepare_streaming(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Prepare kwargs for streaming operations."""
+        kwargs = kwargs.copy()
+        kwargs["stream"] = True
+        return kwargs
 
     async def async_create_with_completion(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T],
-        retry_config: int | AsyncRetrying = 3,
+        max_retries: int | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -319,67 +115,38 @@ class OpenAIProvider(BaseProvider):
         mode: Mode = Mode.FUNCTIONS,
         **kwargs: Any,
     ) -> tuple[T, ChatCompletion]:
-        """Create a completion asynchronously and return both the processed response and raw completion.
-
-        Args:
-            messages: List of chat messages
-            response_model: Expected response model type
-            retry_config: Number of retries or an AsyncRetrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Tuple of (processed_response, raw_response)
-        """
-        if not isinstance(self.client, openai.AsyncOpenAI):
-            raise TypeError("Async operations require an AsyncOpenAI client")
-
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-
-        # Create completion with retries
-        async for attempt in AsyncRetrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create completion
-                    completion = await self.client.chat.completions.create(**request_params)
-
-                    # Run post-completion hooks
-                    if hooks:
-                        hooks.post_completion(completion)
-
-                    # Process response
-                    result = self.process_response(
-                        completion,
-                        response_model,
-                        mode,
-                        validation_context=validation_context,
-                        context=context,
-                        strict=strict,
-                    )
-
-                    return result, completion
-
-                except Exception as e:
-                    self.handle_error(
-                        e, completion if "completion" in locals() else None
-                    )
-                    raise
+        """Create a completion asynchronously and return both the processed response and raw completion."""
+        self._check_async_client()
+        
+        request = self.prepare_request(
+            response_model=response_model,
+            mode=mode,
+            messages=messages,
+            **kwargs,
+        )
+        
+        response = await self._retry_async(
+            lambda: self.client.chat.completions.create(**request),
+            max_retries=max_retries,
+        )
+        
+        result = self.process_response(
+            response=response,
+            response_model=response_model,
+            mode=mode,
+            validation_context=validation_context,
+            context=context,
+            strict=strict,
+            hooks=hooks,
+        )
+        
+        return result, response
 
     def create_partial(
         self,
         response_model: type[T],
         messages: list[dict[str, Any]],
-        retry_config: int | Retrying = 3,
+        max_retries: int | Retrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -387,67 +154,38 @@ class OpenAIProvider(BaseProvider):
         mode: Mode = Mode.FUNCTIONS,
         **kwargs: Any,
     ) -> Generator[T, None, None]:
-        """Create a streaming completion that yields partial results.
-
-        Args:
-            response_model: Expected response model type
-            messages: List of chat messages
-            retry_config: Number of retries or a Retrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Generator yielding partial results
-        """
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-        request_params["stream"] = True
-
-        # Create streaming completion with retries
-        for attempt in Retrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create streaming completion
-                    stream = self.client.chat.completions.create(**request_params)
-
-                    # Process stream chunks
-                    for chunk in stream:
-                        # Run post-chunk hooks
-                        if hooks:
-                            hooks.post_completion(chunk)
-
-                        # Process chunk
-                        result = self.process_response(
-                            chunk,
-                            response_model,
-                            mode,
-                            validation_context=validation_context,
-                            context=context,
-                            strict=strict,
-                            partial=True,
-                        )
-
-                        if result is not None:
-                            yield result
-
-                except Exception as e:
-                    self.handle_error(e, None)
-                    raise
+        """Create a streaming completion that yields partial results."""
+        kwargs = self._prepare_streaming(kwargs)
+        request = self.prepare_request(
+            response_model=response_model,
+            mode=mode,
+            messages=messages,
+            **kwargs,
+        )
+        
+        stream = self._retry_sync(
+            lambda: self.client.chat.completions.create(**request),
+            max_retries=max_retries,
+        )
+        
+        for response in stream:
+            result = self.process_response(
+                response=response,
+                response_model=response_model,
+                mode=mode,
+                validation_context=validation_context,
+                context=context,
+                strict=strict,
+                hooks=hooks,
+            )
+            if result is not None:
+                yield result
 
     async def async_create_partial(
         self,
         response_model: type[T],
         messages: list[dict[str, Any]],
-        retry_config: int | AsyncRetrying = 3,
+        max_retries: int | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -455,70 +193,40 @@ class OpenAIProvider(BaseProvider):
         mode: Mode = Mode.FUNCTIONS,
         **kwargs: Any,
     ) -> AsyncGenerator[T, None]:
-        """Create a streaming completion that yields partial results asynchronously.
-
-        Args:
-            response_model: Expected response model type
-            messages: List of chat messages
-            retry_config: Number of retries or an AsyncRetrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            AsyncGenerator yielding partial results
-        """
-        if not isinstance(self.client, openai.AsyncOpenAI):
-            raise TypeError("Async operations require an AsyncOpenAI client")
-
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-        request_params["stream"] = True
-
-        # Create streaming completion with retries
-        async for attempt in AsyncRetrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create streaming completion
-                    stream = await self.client.chat.completions.create(**request_params)
-
-                    # Process stream chunks
-                    async for chunk in stream:
-                        # Run post-chunk hooks
-                        if hooks:
-                            hooks.post_completion(chunk)
-
-                        # Process chunk
-                        result = self.process_response(
-                            chunk,
-                            response_model,
-                            mode,
-                            validation_context=validation_context,
-                            context=context,
-                            strict=strict,
-                            partial=True,
-                        )
-
-                        if result is not None:
-                            yield result
-
-                except Exception as e:
-                    self.handle_error(e, None)
-                    raise
+        """Create a streaming completion that yields partial results asynchronously."""
+        self._check_async_client()
+        kwargs = self._prepare_streaming(kwargs)
+        
+        request = self.prepare_request(
+            response_model=response_model,
+            mode=mode,
+            messages=messages,
+            **kwargs,
+        )
+        
+        stream = await self._retry_async(
+            lambda: self.client.chat.completions.create(**request),
+            max_retries=max_retries,
+        )
+        
+        async for response in stream:
+            result = self.process_response(
+                response=response,
+                response_model=response_model,
+                mode=mode,
+                validation_context=validation_context,
+                context=context,
+                strict=strict,
+                hooks=hooks,
+            )
+            if result is not None:
+                yield result
 
     def create_iterable(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T],
-        retry_config: int | Retrying = 3,
+        max_retries: int | Retrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -526,67 +234,25 @@ class OpenAIProvider(BaseProvider):
         mode: Mode = Mode.FUNCTIONS,
         **kwargs: Any,
     ) -> Generator[T, None, None]:
-        """Create a streaming completion that yields list items.
-
-        Args:
-            messages: List of chat messages
-            response_model: Expected response model type
-            retry_config: Number of retries or a Retrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            Generator yielding list items
-        """
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-        request_params["stream"] = True
-
-        # Create streaming completion with retries
-        for attempt in Retrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create streaming completion
-                    stream = self.client.chat.completions.create(**request_params)
-
-                    # Process stream chunks
-                    for chunk in stream:
-                        # Run post-chunk hooks
-                        if hooks:
-                            hooks.post_completion(chunk)
-
-                        # Process chunk
-                        result = self.process_response(
-                            chunk,
-                            response_model,
-                            mode,
-                            validation_context=validation_context,
-                            context=context,
-                            strict=strict,
-                            iterable=True,
-                        )
-
-                        if result is not None:
-                            yield result
-
-                except Exception as e:
-                    self.handle_error(e, None)
-                    raise
+        """Create a streaming completion that yields list items."""
+        kwargs["stream"] = True
+        return super().create_iterable(
+            messages=messages,
+            response_model=response_model,
+            max_retries=max_retries,
+            validation_context=validation_context,
+            context=context,
+            strict=strict,
+            hooks=hooks,
+            mode=mode,
+            **kwargs,
+        )
 
     async def async_create_iterable(
         self,
         messages: list[dict[str, Any]],
         response_model: type[T],
-        retry_config: int | AsyncRetrying = 3,
+        max_retries: int | AsyncRetrying = 3,
         validation_context: dict[str, Any] | None = None,
         context: dict[str, Any] | None = None,
         strict: bool = True,
@@ -594,61 +260,19 @@ class OpenAIProvider(BaseProvider):
         mode: Mode = Mode.FUNCTIONS,
         **kwargs: Any,
     ) -> AsyncGenerator[T, None]:
-        """Create a streaming completion that yields list items asynchronously.
-
-        Args:
-            messages: List of chat messages
-            response_model: Expected response model type
-            retry_config: Number of retries or an AsyncRetrying instance
-            validation_context: Context for model validation
-            context: Additional context for processing
-            strict: Whether to use strict validation
-            hooks: Hooks for the completion process
-            mode: Request mode (default: Mode.FUNCTIONS)
-            **kwargs: Additional provider-specific options
-
-        Returns:
-            AsyncGenerator yielding list items
-        """
+        """Create a streaming completion that yields list items asynchronously."""
         if not isinstance(self.client, openai.AsyncOpenAI):
             raise TypeError("Async operations require an AsyncOpenAI client")
-
-        # Prepare request parameters
-        request_params = self.prepare_request(response_model, mode, **kwargs)
-        request_params["messages"] = messages
-        request_params["stream"] = True
-
-        # Create streaming completion with retries
-        async for attempt in AsyncRetrying(retry_config):
-            with attempt:
-                try:
-                    # Run pre-completion hooks
-                    if hooks:
-                        hooks.pre_completion(request_params)
-
-                    # Create streaming completion
-                    stream = await self.client.chat.completions.create(**request_params)
-
-                    # Process stream chunks
-                    async for chunk in stream:
-                        # Run post-chunk hooks
-                        if hooks:
-                            hooks.post_completion(chunk)
-
-                        # Process chunk
-                        result = self.process_response(
-                            chunk,
-                            response_model,
-                            mode,
-                            validation_context=validation_context,
-                            context=context,
-                            strict=strict,
-                            iterable=True,
-                        )
-
-                        if result is not None:
-                            yield result
-
-                except Exception as e:
-                    self.handle_error(e, None)
-                    raise
+        kwargs["stream"] = True
+        async for item in super().async_create_iterable(
+            messages=messages,
+            response_model=response_model,
+            max_retries=max_retries,
+            validation_context=validation_context,
+            context=context,
+            strict=strict,
+            hooks=hooks,
+            mode=mode,
+            **kwargs,
+        ):
+            yield item

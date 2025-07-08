@@ -53,9 +53,7 @@
   - `instructor/function_calls.py` - Type usage examples
   - `instructor/dsl/simple_type.py` - Type handling utilities
 
-## Phase 2: Base Provider Enhancements
-These enhancements establish core patterns that must be followed by all future provider implementations:
-
+## Phase 2A: Dependency Management
 - [ ] Re-use dependency handling patterns
   - [ ] Keep importlib.util.find_spec() for conditional imports
   - [ ] Keep try/except blocks for provider-specific imports
@@ -72,6 +70,7 @@ These enhancements establish core patterns that must be followed by all future p
   Current: Mixed dependency handling in __init__.py and auto_client.py
   Future: Consistent dependency handling across all providers
 
+## Phase 2B: Retry System Integration
 - [ ] Integrate retry system with BaseProvider
   - [ ] Add retry configuration methods:
     - [ ] `configure_retry(max_retries, timeout)` - Configure provider-specific retry settings
@@ -96,6 +95,7 @@ These enhancements establish core patterns that must be followed by all future p
   Current: Retry logic in retry.py, used by patch.py
   Future: Provider-specific retry configuration with shared core implementation
 
+## Phase 2C: Type System Integration
 - [ ] Add type handling to BaseProvider
   - [ ] Add type-related abstract methods:
     - [ ] `validate_response_type(response, response_model)` - Provider-specific type validation
@@ -117,6 +117,7 @@ These enhancements establish core patterns that must be followed by all future p
   Current: Type handling in dsl/ and process_response.py
   Future: Provider-specific type validation with shared utilities
 
+## Phase 2D: Streaming Support
 - [ ] Add streaming support to BaseProvider
   - [ ] Add streaming-related abstract methods:
     - [ ] `process_streaming_response(response, response_model, mode, **kwargs)`
@@ -138,9 +139,7 @@ These enhancements establish core patterns that must be followed by all future p
   Current: Streaming logic in dsl/ modules
   Future: Provider-specific streaming with shared core implementations
 
-## Phase 3: OpenAI Provider Migration
-Note: OpenAISchema is not OpenAI-specific, but rather the core schema specification used by all providers. It follows the OpenAI function calling schema format as it's become a de-facto standard.
-
+## Phase 3A: OpenAI Provider - Core Implementation
 - [ ] Create OpenAIProvider class
   - [ ] Move mode handlers from process_response.py:
     - [ ] `handle_functions`
@@ -149,13 +148,16 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
     - [ ] `handle_json_modes`
   - [ ] Move response processing from function_calls.py
   - [ ] Add error handling from reask.py
-  - [ ] Implement streaming methods:
-    - [ ] Re-use IterableBase for list streaming
-    - [ ] Re-use PartialBase for partial streaming
   Files:
   - `instructor/providers/openai/__init__.py` - New OpenAI provider
   - `instructor/providers/openai/response.py` - Response processing
   - `instructor/providers/openai/errors.py` - Error handling
+
+## Phase 3B: OpenAI Provider - Streaming
+- [ ] Implement streaming methods:
+  - [ ] Re-use IterableBase for list streaming
+  - [ ] Re-use PartialBase for partial streaming
+  Files:
   - `instructor/providers/openai/streaming.py` - Streaming implementation
   Look at:
   - `instructor/process_response.py` - Current mode handlers
@@ -169,6 +171,7 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: All handlers in process_response.py
   Future: Encapsulated in OpenAIProvider class
 
+## Phase 3C: OpenAI Provider - Factory Integration
 - [ ] Update imports and factory functions
   - [ ] Update __init__.py to use provider registry
   - [ ] Maintain backwards compatibility for `from_openai`
@@ -182,16 +185,11 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: Direct import of from_openai function
   Future: Factory function uses provider registry
 
-## Phase 4: Provider Migrations
-
-### Anthropic
+## Phase 4A: Anthropic Provider - Core Implementation
 - [ ] Move message format handling
   - [ ] System message extraction
   - [ ] Tool descriptions formatting
   - [ ] JSON response parsing
-  - [ ] Implement streaming support:
-    - [ ] Re-use OpenAI streaming patterns where possible
-    - [ ] Add Anthropic-specific streaming handlers
   Files:
   - `instructor/providers/anthropic/__init__.py` - New Anthropic provider
   - `instructor/providers/anthropic/messages.py` - Message handling
@@ -202,6 +200,7 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: Mixed handlers across files
   Future: Encapsulated in AnthropicProvider
 
+## Phase 4B: Anthropic Provider - Error Handling
 - [ ] Move error handling
   - [ ] Validation error handling
   - [ ] Reask logic
@@ -213,7 +212,14 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: reask_anthropic_json in reask.py
   Future: AnthropicProvider.handle_error
 
-### Cohere
+## Phase 4C: Anthropic Provider - Streaming
+- [ ] Implement streaming support:
+  - [ ] Re-use OpenAI streaming patterns where possible
+  - [ ] Add Anthropic-specific streaming handlers
+  Files:
+  - `instructor/providers/anthropic/streaming.py` - Streaming implementation
+
+## Phase 5: Cohere Provider
 - [ ] Move message format handling
   - [ ] Convert to chat_history format
   - [ ] Handle role mappings
@@ -235,7 +241,7 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: parse_cohere_tools in OpenAISchema
   Future: CohereProvider._parse_response
 
-### Google/Vertex
+## Phase 6A: Google Provider - Core Implementation
 - [ ] Move multimodal content handling
   Files:
   - `instructor/providers/google/__init__.py` - New Google provider
@@ -246,6 +252,7 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: Scattered across process_response.py
   Future: Encapsulated in GoogleProvider
 
+## Phase 6B: Google Provider - Advanced Features
 - [ ] Move parallel processing support
   Files:
   - `instructor/providers/google/parallel.py` - Parallel processing
@@ -264,7 +271,7 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: Basic streaming support
   Future: Full streaming capabilities
 
-### Remaining Providers
+## Phase 7A: Mistral Provider
 - [ ] Mistral
   - [ ] Tools mode
   - [ ] Structured outputs
@@ -277,11 +284,10 @@ Note: OpenAISchema is not OpenAI-specific, but rather the core schema specificat
   Current: Mode-specific handlers
   Future: MistralProvider implements all modes
 
+## Phase 7B: Bedrock Provider
 - [ ] Bedrock
   - [ ] System message format
   - [ ] Response structure
   - [ ] Streaming support
   Files:
   - `instructor/providers/bedrock/` - New Bedrock provider
-  Look at:
-  - `

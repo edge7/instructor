@@ -36,40 +36,38 @@
 
 ## Phase 2: Base Provider Enhancements
 
-- [ ] Add retry support to BaseProvider
-  - [ ] Move retry logic from instructor/retry.py
-  - [ ] Add retry-related abstract methods:
-    - [ ] `initialize_retry_config(max_retries, timeout)`
-    - [ ] `handle_retry_error(error, response, attempt)`
-  - [ ] Re-use existing tenacity integration:
-    - [ ] Support sync/async retrying
-    - [ ] Keep existing retry conditions
-    - [ ] Preserve usage tracking
-  Current: Retry logic in retry.py
-  Future: Provider-specific retry handling
+- [ ] Integrate retry system with BaseProvider
+  - [ ] Add retry configuration methods:
+    - [ ] `configure_retry(max_retries, timeout)` - Configure provider-specific retry settings
+    - [ ] `get_retry_conditions()` - Get provider-specific retry conditions
+  - [ ] Keep core retry.py implementation:
+    - [ ] Used by patch.py for all providers
+    - [ ] Maintains tenacity integration
+    - [ ] Preserves usage tracking
+    - [ ] Keeps error context
+  Current: Retry logic in retry.py, used by patch.py
+  Future: Provider-specific retry configuration with shared core implementation
 
 - [ ] Add type handling to BaseProvider
-  - [ ] Move type utilities from dsl/simple_type.py
-  - [ ] Add type-related methods:
-    - [ ] `prepare_response_model(response_model)`
-    - [ ] `validate_response_type(response, response_model)`
-  - [ ] Re-use existing type validation:
-    - [ ] Simple type wrapping
-    - [ ] Iterable type handling
-    - [ ] Union type support
-  Current: Type handling scattered across codebase
-  Future: Centralized in BaseProvider with provider-specific overrides
+  - [ ] Add type-related abstract methods:
+    - [ ] `validate_response_type(response, response_model)` - Provider-specific type validation
+  - [ ] Re-use existing type utilities:
+    - [ ] Keep dsl/simple_type.py implementation
+    - [ ] Focus on create method type handling
+    - [ ] Maintain existing validation patterns
+  Current: Type handling in dsl/ and process_response.py
+  Future: Provider-specific type validation with shared utilities
 
 - [ ] Add streaming support to BaseProvider
-  - [ ] Re-use existing streaming implementations:
-    - [ ] Iterable streaming from dsl/iterable.py
-    - [ ] Partial streaming from dsl/partial.py
   - [ ] Add streaming-related abstract methods:
-    - [ ] `process_streaming_response_async(response, response_model, mode, **kwargs)`
     - [ ] `process_streaming_response(response, response_model, mode, **kwargs)`
-  - [ ] Add streaming-specific type hints and validation
+    - [ ] `process_streaming_response_async(response, response_model, mode, **kwargs)`
+  - [ ] Re-use existing streaming implementations:
+    - [ ] Keep dsl/iterable.py for list streaming
+    - [ ] Keep dsl/partial.py for partial streaming
+    - [ ] Add provider-specific stream processing
   Current: Streaming logic in dsl/ modules
-  Future: Provider-specific streaming implementations
+  Future: Provider-specific streaming with shared core implementations
 
 ## Phase 3: OpenAI Provider Migration
 
@@ -163,49 +161,3 @@
   mkdir -p tests/providers/{base,openai,anthropic,google,mistral,cohere}
   touch tests/providers/conftest.py
   ```
-  Current: Tests in tests/llm/test_*/
-  Future: Unified provider test structure
-
-- [ ] Base provider tests
-  - [ ] Registration tests
-  - [ ] Mode validation tests
-  - [ ] Error handling tests
-  - [ ] Streaming tests:
-    - [ ] Sync streaming
-    - [ ] Async streaming
-    - [ ] Type validation during streaming
-  Current: Mixed test coverage
-  Future: Comprehensive test suite
-
-- [ ] Provider-specific tests
-  - [ ] Message format tests
-  - [ ] Response processing tests
-  - [ ] Error handling tests
-  - [ ] Mode support tests
-  - [ ] Streaming behavior tests:
-    - [ ] List streaming
-    - [ ] Partial streaming
-    - [ ] Error handling during streaming
-  Current: Different test patterns
-  Future: Consistent test structure
-
-## Phase 6: Cleanup and Documentation
-
-- [ ] Remove deprecated files
-  ```bash
-  rm instructor/client_*.py
-  ```
-  Current: Provider logic in client_*.py files
-  Future: All providers in providers/ directory
-
-- [ ] Update documentation
-  - [ ] Update docstrings
-  - [ ] Update type hints
-  - [ ] Update examples
-  - [ ] Add streaming documentation:
-    - [ ] Provider-specific streaming capabilities
-    - [ ] Sync vs async streaming patterns
-    - [ ] Type handling during streaming
-  - [ ] Add async/sync usage documentation
-  Current: Mixed documentation styles
-  Future: Consistent provider documentation 

@@ -35,6 +35,14 @@
   - Replaced `typing.Set` with `set`
 
 ## Phase 2: Base Provider Enhancements
+These enhancements establish core patterns that must be followed by all future provider implementations:
+
+- [ ] Re-use dependency handling patterns
+  - [ ] Keep importlib.util.find_spec() for conditional imports
+  - [ ] Keep try/except blocks for provider-specific imports
+  - [ ] Keep helpful error messages with install instructions
+  Current: Mixed dependency handling in __init__.py and auto_client.py
+  Future: Consistent dependency handling across all providers
 
 - [ ] Integrate retry system with BaseProvider
   - [ ] Add retry configuration methods:

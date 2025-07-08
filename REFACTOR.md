@@ -36,29 +36,40 @@
 
 ## Phase 2: Base Provider Enhancements
 
-- [ ] Add streaming support to BaseProvider
-  - [ ] Add abstract streaming methods:
-    - [ ] `process_streaming_response_async(response, response_model, mode, **kwargs)`
-    - [ ] `process_streaming_response(response, response_model, mode, **kwargs)`
-  - [ ] Re-use existing streaming implementations from `dsl/`
-  - [ ] Add streaming-specific type hints and validation
-  Current: Streaming logic in `dsl/` modules
-  Future: Provider-specific streaming implementations
+- [ ] Add retry support to BaseProvider
+  - [ ] Move retry logic from instructor/retry.py
+  - [ ] Add retry-related abstract methods:
+    - [ ] `initialize_retry_config(max_retries, timeout)`
+    - [ ] `handle_retry_error(error, response, attempt)`
+  - [ ] Re-use existing tenacity integration:
+    - [ ] Support sync/async retrying
+    - [ ] Keep existing retry conditions
+    - [ ] Preserve usage tracking
+  Current: Retry logic in retry.py
+  Future: Provider-specific retry handling
 
 - [ ] Add type handling to BaseProvider
-  - [ ] Integrate existing type utilities from `dsl/simple_type.py`
-  - [ ] Add type preparation methods:
+  - [ ] Move type utilities from dsl/simple_type.py
+  - [ ] Add type-related methods:
     - [ ] `prepare_response_model(response_model)`
     - [ ] `validate_response_type(response, response_model)`
+  - [ ] Re-use existing type validation:
+    - [ ] Simple type wrapping
+    - [ ] Iterable type handling
+    - [ ] Union type support
   Current: Type handling scattered across codebase
   Future: Centralized in BaseProvider with provider-specific overrides
 
-- [ ] Add sync/async support
-  - [ ] Update ProviderRegistry to handle async flag
-  - [ ] Add async-specific provider methods
-  - [ ] Re-use existing retry logic for both sync/async
-  Current: Mixed sync/async implementations
-  Future: Consistent sync/async pattern across providers
+- [ ] Add streaming support to BaseProvider
+  - [ ] Re-use existing streaming implementations:
+    - [ ] Iterable streaming from dsl/iterable.py
+    - [ ] Partial streaming from dsl/partial.py
+  - [ ] Add streaming-related abstract methods:
+    - [ ] `process_streaming_response_async(response, response_model, mode, **kwargs)`
+    - [ ] `process_streaming_response(response, response_model, mode, **kwargs)`
+  - [ ] Add streaming-specific type hints and validation
+  Current: Streaming logic in dsl/ modules
+  Future: Provider-specific streaming implementations
 
 ## Phase 3: OpenAI Provider Migration
 

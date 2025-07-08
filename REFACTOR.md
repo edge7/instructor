@@ -8,14 +8,20 @@ Provider implementations must handle dependencies by:
 - Using importlib.util.find_spec() for conditional imports
 - Implementing try/except blocks for provider-specific imports
 - Providing helpful error messages with install instructions
-- Using the `requires_package` decorator with proper version constraints
+- Using the `requires_package` decorator on provider methods that make API calls
+  - Apply to create(), create_with_completion(), create_partial(), create_iterable()
+  - Include minimum version requirements from pyproject.toml
+  - Example: @requires_package("openai", min_version="1.0.0")
 - Handling imports lazily to avoid unnecessary dependencies
+  - Import provider SDKs inside method bodies
+  - Use conditional imports for optional features
+  - Provide clear error messages when dependencies are missing
 
 Reference implementations:
 - `instructor/providers/base/dependencies.py` - Core dependency utilities
 - `instructor/cache/__init__.py` - Example of lazy imports
 - `instructor/auto_client.py` - Current conditional imports
-- `instructor/auto_client.py` - Provider-specific imports
+- `instructor/providers/openai/__init__.py` - Example of requires_package usage
 
 ### Type System
 Provider type handling must:

@@ -34,7 +34,33 @@
   - Replaced `typing.Type` with `type`
   - Replaced `typing.Set` with `set`
 
-## Phase 2: OpenAI Provider Migration
+## Phase 2: Base Provider Enhancements
+
+- [ ] Add streaming support to BaseProvider
+  - [ ] Add abstract streaming methods:
+    - [ ] `process_streaming_response_async(response, response_model, mode, **kwargs)`
+    - [ ] `process_streaming_response(response, response_model, mode, **kwargs)`
+  - [ ] Re-use existing streaming implementations from `dsl/`
+  - [ ] Add streaming-specific type hints and validation
+  Current: Streaming logic in `dsl/` modules
+  Future: Provider-specific streaming implementations
+
+- [ ] Add type handling to BaseProvider
+  - [ ] Integrate existing type utilities from `dsl/simple_type.py`
+  - [ ] Add type preparation methods:
+    - [ ] `prepare_response_model(response_model)`
+    - [ ] `validate_response_type(response, response_model)`
+  Current: Type handling scattered across codebase
+  Future: Centralized in BaseProvider with provider-specific overrides
+
+- [ ] Add sync/async support
+  - [ ] Update ProviderRegistry to handle async flag
+  - [ ] Add async-specific provider methods
+  - [ ] Re-use existing retry logic for both sync/async
+  Current: Mixed sync/async implementations
+  Future: Consistent sync/async pattern across providers
+
+## Phase 3: OpenAI Provider Migration
 
 - [ ] Create OpenAIProvider class
   - [ ] Move mode handlers from process_response.py:
@@ -42,14 +68,13 @@
     - [ ] `handle_tools`
     - [ ] `handle_tools_strict`
     - [ ] `handle_json_modes`
-    Current: All handlers in process_response.py
-    Future: Encapsulated in OpenAIProvider class
   - [ ] Move response processing from function_calls.py
-    Current: OpenAISchema.from_response handles all formats
-    Future: OpenAIProvider handles its specific formats
   - [ ] Add error handling from reask.py
-    Current: Generic error handling with some OpenAI specifics
-    Future: OpenAI-specific error handling in provider
+  - [ ] Implement streaming methods:
+    - [ ] Re-use IterableBase for list streaming
+    - [ ] Re-use PartialBase for partial streaming
+  Current: All handlers in process_response.py
+  Future: Encapsulated in OpenAIProvider class
 
 - [ ] Update imports and factory functions
   - [ ] Update __init__.py to use provider registry
@@ -57,19 +82,19 @@
   Current: Direct import of from_openai function
   Future: Factory function uses provider registry
 
-## Phase 3: Provider Migrations
+## Phase 4: Provider Migrations
 
 ### Anthropic
 - [ ] Move message format handling
   - [ ] System message extraction
-    Current: handle_anthropic_tools extracts system messages
-    Future: AnthropicProvider._extract_system_messages
   - [ ] Tool descriptions formatting
-    Current: Uses anthropic_schema property
-    Future: Provider handles schema conversion
   - [ ] JSON response parsing
-    Current: parse_anthropic_json in OpenAISchema
-    Future: AnthropicProvider._parse_json_response
+  - [ ] Implement streaming support:
+    - [ ] Re-use OpenAI streaming patterns where possible
+    - [ ] Add Anthropic-specific streaming handlers
+  Current: Mixed handlers across files
+  Future: Encapsulated in AnthropicProvider
+
 - [ ] Move error handling
   - [ ] Validation error handling
   - [ ] Reask logic
@@ -79,11 +104,11 @@
 ### Cohere
 - [ ] Move message format handling
   - [ ] Convert to chat_history format
-    Current: handle_cohere_modes converts messages
-    Future: CohereProvider._prepare_chat_history
   - [ ] Handle role mappings
-    Current: Hardcoded USER/CHATBOT mapping
-    Future: Provider-defined role mapping
+  - [ ] Implement streaming methods
+  Current: Mixed handlers
+  Future: CohereProvider implementation
+
 - [ ] Move response processing
   Current: parse_cohere_tools in OpenAISchema
   Future: CohereProvider._parse_response
@@ -92,26 +117,35 @@
 - [ ] Move multimodal content handling
   Current: Scattered across process_response.py
   Future: Encapsulated in GoogleProvider
+
 - [ ] Move parallel processing support
   Current: handle_vertexai_parallel_tools
   Future: GoogleProvider._handle_parallel
+
+- [ ] Add streaming support
+  - [ ] Implement Google-specific streaming
+  - [ ] Handle async streaming properly
+  Current: Basic streaming support
+  Future: Full streaming capabilities
 
 ### Remaining Providers
 - [ ] Mistral
   - [ ] Tools mode
   - [ ] Structured outputs
-  Current: Mode-specific handlers in process_response.py
+  - [ ] Streaming implementation
+  Current: Mode-specific handlers
   Future: MistralProvider implements all modes
 
 - [ ] Bedrock
   - [ ] System message format
   - [ ] Response structure
-  Current: handle_bedrock_json and handle_bedrock_tools
+  - [ ] Streaming support
+  Current: Basic handlers
   Future: BedrockProvider handles all formats
 
 [... remaining providers follow same pattern ...]
 
-## Phase 4: Testing Infrastructure
+## Phase 5: Testing Infrastructure
 
 - [ ] Create test structure
   ```bash
@@ -125,18 +159,26 @@
   - [ ] Registration tests
   - [ ] Mode validation tests
   - [ ] Error handling tests
-  Current: Mixed in with provider-specific tests
-  Future: Common test suite for all providers
+  - [ ] Streaming tests:
+    - [ ] Sync streaming
+    - [ ] Async streaming
+    - [ ] Type validation during streaming
+  Current: Mixed test coverage
+  Future: Comprehensive test suite
 
 - [ ] Provider-specific tests
   - [ ] Message format tests
   - [ ] Response processing tests
   - [ ] Error handling tests
   - [ ] Mode support tests
-  Current: Different test patterns per provider
-  Future: Consistent test structure across providers
+  - [ ] Streaming behavior tests:
+    - [ ] List streaming
+    - [ ] Partial streaming
+    - [ ] Error handling during streaming
+  Current: Different test patterns
+  Future: Consistent test structure
 
-## Phase 5: Cleanup
+## Phase 6: Cleanup and Documentation
 
 - [ ] Remove deprecated files
   ```bash
@@ -149,5 +191,10 @@
   - [ ] Update docstrings
   - [ ] Update type hints
   - [ ] Update examples
+  - [ ] Add streaming documentation:
+    - [ ] Provider-specific streaming capabilities
+    - [ ] Sync vs async streaming patterns
+    - [ ] Type handling during streaming
+  - [ ] Add async/sync usage documentation
   Current: Mixed documentation styles
   Future: Consistent provider documentation 

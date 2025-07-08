@@ -53,7 +53,7 @@ Reference implementations:
 - `instructor/dsl/partial.py` - Partial streaming implementation
 - `docs/concepts/streaming.md` - Streaming documentation
 
-## Phase 1: Base Infrastructure ✅
+## Phase 1: Base Infrastructure ⏳
 
 - [x] Create directory structure
   ```bash
@@ -78,6 +78,16 @@ Reference implementations:
     - [x] `name: str`
     - [x] `supported_modes: ClassVar[set[Mode]]`
       ✅ Done: Each provider declares supported modes
+  - [x] Add retry configuration:
+    - [x] `_retry_config: dict[str, Any]` for tenacity settings
+    - [ ] Support for max_retries, timeout, and conditions
+    - [ ] Integration with create method retry logic
+  - [ ] Add create methods:
+    - [ ] `create(messages, response_model, **kwargs)` - Basic model creation
+    - [ ] `create_with_completion(messages, response_model, **kwargs)` - Returns (model, raw_response)
+    - [ ] `create_partial(response_model, messages, **kwargs)` - For streaming partial results
+    - [ ] `create_iterable(messages, response_model, **kwargs)` - For streaming list items
+    ⏳ In Progress: Need to implement create methods and tenacity integration
   Look at:
   - `instructor/client.py` - Current base client implementation
   - `instructor/client_*.py` - Current provider-specific clients
@@ -106,7 +116,7 @@ Reference implementations:
   - `instructor/function_calls.py` - Type usage examples
   - `instructor/dsl/simple_type.py` - Type handling utilities
 
-## Phase 2: OpenAI Provider - Core Implementation ✅
+## Phase 2: OpenAI Provider - Core Implementation ⏳
 - [x] Create OpenAIProvider class
   - [x] Move mode handlers from process_response.py:
     - [x] `handle_functions`
@@ -122,6 +132,13 @@ Reference implementations:
   - [x] Add dependency management:
     - [x] Create base/dependencies.py with requires_package decorator
     - [x] Add OpenAI dependency check with min_version="1.0.0"
+  - [ ] Implement create methods:
+    - [ ] `create` method using OpenAI chat completions
+    - [ ] `create_with_completion` returning raw completion
+    - [ ] `create_partial` for streaming partial results
+    - [ ] `create_iterable` for streaming list items
+    - [ ] Integrate tenacity retry logic
+    - [ ] Handle validation errors and retries
   Files:
   - `instructor/providers/openai/__init__.py` - New OpenAI provider ✅
   - `instructor/providers/openai/response.py` - Response processing ✅
@@ -131,18 +148,10 @@ Reference implementations:
   - `instructor/process_response.py` - Current mode handlers
   - `instructor/function_calls.py` - Core schema implementation
   - `instructor/reask.py` - Current error handling
-  Current: Core implementation complete with dependency management
-  Future: Add tests and streaming support
-
-### Additional Tasks Before Phase 3:
-- [x] Add `requires_package` decorator for OpenAI dependency
-- [ ] Add tests for OpenAIProvider:
-  - [ ] Test each mode handler
-  - [ ] Test response processing
-  - [ ] Test error handling
-  - [ ] Test retry configuration
-- [ ] Add docstring examples
-- [ ] Update type hints for OpenAI v1.0.0 compatibility
+  - `instructor/dsl/partial.py` - Partial streaming implementation
+  - `instructor/dsl/iterable.py` - List streaming implementation
+  Current: Basic implementation complete but missing create methods
+  Future: Implement create methods and tenacity integration
 
 ## Phase 3: OpenAI Provider - Streaming
 - [ ] Implement streaming methods:
@@ -282,3 +291,8 @@ Reference implementations:
   - [ ] Streaming support
   Files:
   - `instructor/providers/bedrock/` - New Bedrock provider
+
+## Phase 9: Documentation Updates
+- [ ] Add docstring examples to all providers
+- [ ] Update API reference docs
+- [ ] Add migration guide for provider system

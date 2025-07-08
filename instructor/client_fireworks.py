@@ -1,12 +1,46 @@
 from __future__ import annotations
 
-from typing import Any, overload
+from typing import Any, overload, TypeVar
 
 import instructor
 from instructor.client import AsyncInstructor, Instructor
-
+from instructor.mode import Mode
 
 from fireworks.client import Fireworks, AsyncFireworks  # type:ignore
+
+T = TypeVar("T")
+
+
+def handle_fireworks_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    # Import here to avoid circular imports
+    from instructor.process_response import handle_tools
+
+    if "stream" not in new_kwargs:
+        new_kwargs["stream"] = False
+
+    return handle_tools(response_model, new_kwargs)
+
+
+def handle_fireworks_json(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    if "stream" not in new_kwargs:
+        new_kwargs["stream"] = False
+
+    new_kwargs["response_format"] = {
+        "type": "json_object",
+        "schema": response_model.model_json_schema(),
+    }
+    return response_model, new_kwargs
+
+
+# Mode handlers mapping
+mode_handlers = {
+    Mode.FIREWORKS_TOOLS: handle_fireworks_tools,
+    Mode.FIREWORKS_JSON: handle_fireworks_json,
+}
 
 
 @overload

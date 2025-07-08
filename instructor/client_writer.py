@@ -4,7 +4,40 @@ from __future__ import annotations
 
 import instructor
 from writerai import AsyncWriter, Writer
-from typing import overload, Any
+from typing import overload, Any, TypeVar
+
+T = TypeVar("T")
+
+
+def handle_writer_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    new_kwargs["tools"] = [
+        {
+            "type": "function",
+            "function": response_model.openai_schema,
+        }
+    ]
+    new_kwargs["tool_choice"] = "auto"
+    return response_model, new_kwargs
+
+
+def handle_writer_json(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    new_kwargs["response_format"] = {
+        "type": "json_schema",
+        "json_schema": {"schema": response_model.model_json_schema()},
+    }
+
+    return response_model, new_kwargs
+
+
+# Writer mode handlers mapping
+mode_handlers = {
+    instructor.Mode.WRITER_TOOLS: handle_writer_tools,
+    instructor.Mode.WRITER_JSON: handle_writer_json,
+}
 
 
 @overload

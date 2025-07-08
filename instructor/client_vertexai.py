@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from typing import Any, Union, get_origin
+from collections.abc import Iterable
 
 from vertexai.preview.generative_models import ToolConfig  # type: ignore
 import vertexai.generative_models as gm  # type: ignore
 from pydantic import BaseModel
 import instructor
-from instructor.dsl.parallel import get_types_array
+from instructor.dsl.parallel import (
+    get_types_array,
+    VertexAIParallelBase,
+    VertexAIParallelModel,
+)
 import jsonref
 
 
@@ -133,6 +138,57 @@ def vertexai_process_json_response(_kwargs: dict[str, Any], model: BaseModel):
     )
 
     return contents, generation_config
+
+
+def handle_vertexai_parallel_tools(
+    response_model: type[Iterable[Any]], new_kwargs: dict[str, Any]
+) -> tuple[VertexAIParallelBase, dict[str, Any]]:
+    if new_kwargs.get("stream", False):
+        from instructor.exceptions import ConfigurationError
+
+        raise ConfigurationError(
+            "stream=True is not supported when using VERTEXAI_PARALLEL_TOOLS mode"
+        )
+
+    # Extract concrete types before passing to vertexai_process_response
+    model_types = list(get_types_array(response_model))
+    contents, tools, tool_config = vertexai_process_response(new_kwargs, model_types)
+    new_kwargs["contents"] = contents
+    new_kwargs["tools"] = tools
+    new_kwargs["tool_config"] = tool_config
+
+    return VertexAIParallelModel(typehint=response_model), new_kwargs
+
+
+def handle_vertexai_tools(
+    response_model: type[Any], new_kwargs: dict[str, Any]
+) -> tuple[type[Any], dict[str, Any]]:
+    contents, tools, tool_config = vertexai_process_response(new_kwargs, response_model)
+
+    new_kwargs["contents"] = contents
+    new_kwargs["tools"] = tools
+    new_kwargs["tool_config"] = tool_config
+    return response_model, new_kwargs
+
+
+def handle_vertexai_json(
+    response_model: type[Any], new_kwargs: dict[str, Any]
+) -> tuple[type[Any], dict[str, Any]]:
+    contents, generation_config = vertexai_process_json_response(
+        new_kwargs, response_model
+    )
+
+    new_kwargs["contents"] = contents
+    new_kwargs["generation_config"] = generation_config
+    return response_model, new_kwargs
+
+
+# Mode handlers dictionary for Vertex AI
+mode_handlers = {
+    instructor.Mode.VERTEXAI_PARALLEL_TOOLS: handle_vertexai_parallel_tools,
+    instructor.Mode.VERTEXAI_TOOLS: handle_vertexai_tools,
+    instructor.Mode.VERTEXAI_JSON: handle_vertexai_json,
+}
 
 
 def from_vertexai(

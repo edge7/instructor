@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import openai
 import instructor
-from typing import overload, Any
+from typing import overload, Any, TypeVar
+
+T = TypeVar("T")
 
 
 @overload
@@ -73,3 +75,19 @@ def from_perplexity(
         mode=mode,
         **kwargs,
     )
+
+
+def handle_perplexity_json(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    new_kwargs["response_format"] = {
+        "type": "json_schema",
+        "json_schema": {"schema": response_model.model_json_schema()},
+    }
+
+    return response_model, new_kwargs
+
+
+mode_handlers = {
+    instructor.Mode.PERPLEXITY_JSON: handle_perplexity_json,
+}

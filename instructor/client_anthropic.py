@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import json
 import anthropic
 import instructor
 
-from typing import overload, Any
+from textwrap import dedent
+from typing import overload, Any, TypeVar
+
+from instructor.utils import extract_system_messages, combine_system_messages
+
+T = TypeVar("T")
 
 
 @overload
@@ -115,3 +121,92 @@ def from_anthropic(
             mode=mode,
             **kwargs,
         )
+
+
+def handle_anthropic_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    tool_descriptions = response_model.anthropic_schema
+    new_kwargs["tools"] = [tool_descriptions]
+    new_kwargs["tool_choice"] = {
+        "type": "tool",
+        "name": response_model.__name__,
+    }
+
+    system_messages = extract_system_messages(new_kwargs.get("messages", []))
+
+    if system_messages:
+        new_kwargs["system"] = combine_system_messages(
+            new_kwargs.get("system"), system_messages
+        )
+
+    new_kwargs["messages"] = [
+        m for m in new_kwargs.get("messages", []) if m["role"] != "system"
+    ]
+
+    return response_model, new_kwargs
+
+
+def handle_anthropic_reasoning_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    # https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview#forcing-tool-use
+
+    response_model, new_kwargs = handle_anthropic_tools(response_model, new_kwargs)
+
+    # https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview#forcing-tool-use
+    # Reasoning does not allow forced tool use
+    new_kwargs["tool_choice"] = {"type": "auto"}
+
+    # But add a message recommending only to use the tools if they are relevant
+    implict_forced_tool_message = dedent(
+        f"""
+        Return only the tool call and no additional text.
+        """
+    )
+    new_kwargs["system"] = combine_system_messages(
+        new_kwargs.get("system"),
+        [{"type": "text", "text": implict_forced_tool_message}],
+    )
+    return response_model, new_kwargs
+
+
+def handle_anthropic_json(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    system_messages = extract_system_messages(new_kwargs.get("messages", []))
+
+    if system_messages:
+        new_kwargs["system"] = combine_system_messages(
+            new_kwargs.get("system"), system_messages
+        )
+
+    new_kwargs["messages"] = [
+        m for m in new_kwargs.get("messages", []) if m["role"] != "system"
+    ]
+
+    json_schema_message = dedent(
+        f"""
+        As a genius expert, your task is to understand the content and provide
+        the parsed objects in json that match the following json_schema:\n
+
+        {json.dumps(response_model.model_json_schema(), indent=2, ensure_ascii=False)}
+
+        Make sure to return an instance of the JSON, not the schema itself
+        """
+    )
+
+    new_kwargs["system"] = combine_system_messages(
+        new_kwargs.get("system"),
+        [{"type": "text", "text": json_schema_message}],
+    )
+
+    return response_model, new_kwargs
+
+
+# Mode handlers mapping
+mode_handlers = {
+    instructor.Mode.ANTHROPIC_TOOLS: handle_anthropic_tools,
+    instructor.Mode.ANTHROPIC_REASONING_TOOLS: handle_anthropic_reasoning_tools,
+    instructor.Mode.ANTHROPIC_JSON: handle_anthropic_json,
+}

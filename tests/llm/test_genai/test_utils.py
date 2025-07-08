@@ -1,4 +1,4 @@
-from instructor.utils import update_genai_kwargs
+from instructor.client_genai import update_genai_kwargs
 
 
 def test_update_genai_kwargs_basic():

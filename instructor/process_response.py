@@ -40,6 +40,55 @@ from instructor.utils import (
     merge_consecutive_messages,
     update_genai_kwargs,
 )
+from instructor.client_gemini import (
+    handle_gemini_json,
+    handle_gemini_tools,
+)
+from instructor.client_mistral import (
+    handle_mistral_tools,
+    handle_mistral_structured_outputs,
+)
+from instructor.client_anthropic import (
+    handle_anthropic_tools,
+    handle_anthropic_reasoning_tools,
+    handle_anthropic_json,
+)
+from instructor.client_cohere import (
+    handle_cohere_modes,
+    handle_cohere_json_schema,
+    handle_cohere_tools,
+)
+from instructor.client_fireworks import (
+    handle_fireworks_tools,
+    handle_fireworks_json,
+)
+from instructor.client_genai import (
+    handle_genai_tools,
+    handle_genai_structured_outputs,
+)
+from instructor.client_vertexai import (
+    handle_vertexai_parallel_tools,
+    handle_vertexai_tools,
+    handle_vertexai_json,
+)
+from instructor.client_cerebras import (
+    handle_cerebras_tools,
+    handle_cerebras_json,
+)
+from instructor.client_writer import (
+    handle_writer_tools,
+    handle_writer_json,
+)
+from instructor.client_bedrock import (
+    handle_bedrock_json,
+    handle_bedrock_tools,
+)
+from instructor.client_perplexity import (
+    handle_perplexity_json,
+)
+from instructor.client_openrouter import (
+    handle_openrouter_structured_outputs,
+)
 
 logger = logging.getLogger("instructor")
 
@@ -327,28 +376,7 @@ def handle_responses_tools_with_inbuilt_tools(
     return response_model, new_kwargs
 
 
-def handle_mistral_tools(
-    response_model: type[T], new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    new_kwargs["tools"] = [
-        {
-            "type": "function",
-            "function": response_model.openai_schema,
-        }
-    ]
-    new_kwargs["tool_choice"] = "any"
-    return response_model, new_kwargs
 
-
-def handle_mistral_structured_outputs(
-    response_model: type[T], new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    from mistralai.extra import response_format_from_pydantic_model
-
-    new_kwargs["response_format"] = response_format_from_pydantic_model(response_model)
-    new_kwargs.pop("tools", None)
-    new_kwargs.pop("response_model", None)
-    return response_model, new_kwargs
 
 
 def handle_json_o1(
@@ -431,103 +459,10 @@ def handle_json_modes(
     return response_model, new_kwargs
 
 
-def handle_anthropic_tools(
-    response_model: type[T], new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    tool_descriptions = response_model.anthropic_schema
-    new_kwargs["tools"] = [tool_descriptions]
-    new_kwargs["tool_choice"] = {
-        "type": "tool",
-        "name": response_model.__name__,
-    }
-
-    system_messages = extract_system_messages(new_kwargs.get("messages", []))
-
-    if system_messages:
-        new_kwargs["system"] = combine_system_messages(
-            new_kwargs.get("system"), system_messages
-        )
-
-    new_kwargs["messages"] = [
-        m for m in new_kwargs.get("messages", []) if m["role"] != "system"
-    ]
-
-    return response_model, new_kwargs
 
 
-def handle_anthropic_reasoning_tools(
-    response_model: type[T], new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    # https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview#forcing-tool-use
-
-    response_model, new_kwargs = handle_anthropic_tools(response_model, new_kwargs)
-
-    # https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview#forcing-tool-use
-    # Reasoning does not allow forced tool use
-    new_kwargs["tool_choice"] = {"type": "auto"}
-
-    # But add a message recommending only to use the tools if they are relevant
-    implict_forced_tool_message = dedent(
-        f"""
-        Return only the tool call and no additional text.
-        """
-    )
-    new_kwargs["system"] = combine_system_messages(
-        new_kwargs.get("system"),
-        [{"type": "text", "text": implict_forced_tool_message}],
-    )
-    return response_model, new_kwargs
 
 
-def handle_anthropic_json(
-    response_model: type[T], new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    system_messages = extract_system_messages(new_kwargs.get("messages", []))
-
-    if system_messages:
-        new_kwargs["system"] = combine_system_messages(
-            new_kwargs.get("system"), system_messages
-        )
-
-    new_kwargs["messages"] = [
-        m for m in new_kwargs.get("messages", []) if m["role"] != "system"
-    ]
-
-    json_schema_message = dedent(
-        f"""
-        As a genius expert, your task is to understand the content and provide
-        the parsed objects in json that match the following json_schema:\n
-
-        {json.dumps(response_model.model_json_schema(), indent=2, ensure_ascii=False)}
-
-        Make sure to return an instance of the JSON, not the schema itself
-        """
-    )
-
-    new_kwargs["system"] = combine_system_messages(
-        new_kwargs.get("system"),
-        [{"type": "text", "text": json_schema_message}],
-    )
-
-    return response_model, new_kwargs
-
-
-def handle_cohere_modes(new_kwargs: dict[str, Any]) -> tuple[None, dict[str, Any]]:
-    messages = new_kwargs.pop("messages", [])
-    chat_history = []
-    for message in messages[:-1]:
-        chat_history.append(  # type: ignore
-            {
-                "role": message["role"],
-                "message": message["content"],
-            }
-        )
-    new_kwargs["message"] = messages[-1]["content"]
-    new_kwargs["chat_history"] = chat_history
-    if "model_name" in new_kwargs and "model" not in new_kwargs:
-        new_kwargs["model"] = new_kwargs.pop("model_name")
-    new_kwargs.pop("strict", None)
-    return None, new_kwargs
 
 
 def handle_fireworks_tools(
@@ -560,65 +495,6 @@ def handle_fireworks_json(
     }
     return response_model, new_kwargs
 
-
-def handle_gemini_json(
-    response_model: type[T], new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    if "model" in new_kwargs:
-        from instructor.exceptions import ConfigurationError
-
-        raise ConfigurationError(
-            "Gemini `model` must be set while patching the client, not passed as a parameter to the create method"
-        )
-
-    from .utils import update_gemini_kwargs
-
-    message = dedent(
-        f"""
-        As a genius expert, your task is to understand the content and provide
-        the parsed objects in json that match the following json_schema:\n
-
-        {json.dumps(response_model.model_json_schema(), indent=2, ensure_ascii=False)}
-
-        Make sure to return an instance of the JSON, not the schema itself
-        """
-    )
-
-    if new_kwargs["messages"][0]["role"] != "system":
-        new_kwargs["messages"].insert(0, {"role": "system", "content": message})
-    else:
-        new_kwargs["messages"][0]["content"] += f"\n\n{message}"
-
-    new_kwargs["generation_config"] = new_kwargs.get("generation_config", {}) | {
-        "response_mime_type": "application/json"
-    }
-
-    new_kwargs = update_gemini_kwargs(new_kwargs)
-    return response_model, new_kwargs
-
-
-def handle_gemini_tools(
-    response_model: type[T], new_kwargs: dict[str, Any]
-) -> tuple[type[T], dict[str, Any]]:
-    if "model" in new_kwargs:
-        from instructor.exceptions import ConfigurationError
-
-        raise ConfigurationError(
-            "Gemini `model` must be set while patching the client, not passed as a parameter to the create method"
-        )
-
-    from .utils import update_gemini_kwargs
-
-    new_kwargs["tools"] = [response_model.gemini_schema]
-    new_kwargs["tool_config"] = {
-        "function_calling_config": {
-            "mode": "ANY",
-            "allowed_function_names": [response_model.__name__],
-        },
-    }
-
-    new_kwargs = update_gemini_kwargs(new_kwargs)
-    return response_model, new_kwargs
 
 
 def handle_genai_structured_outputs(

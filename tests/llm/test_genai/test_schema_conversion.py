@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel
 from enum import Enum
 
-from instructor.utils import map_to_gemini_function_schema, verify_no_unions
+from instructor.client_genai import map_to_gemini_function_schema, verify_no_unions
 
 
 class Priority(Enum):

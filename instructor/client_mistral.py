@@ -4,7 +4,41 @@ from __future__ import annotations
 
 from mistralai import Mistral
 import instructor
-from typing import overload, Any, Literal
+from typing import overload, Any, Literal, TypeVar
+
+
+T = TypeVar("T")
+
+
+def handle_mistral_tools(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    new_kwargs["tools"] = [
+        {
+            "type": "function",
+            "function": response_model.openai_schema,
+        }
+    ]
+    new_kwargs["tool_choice"] = "any"
+    return response_model, new_kwargs
+
+
+def handle_mistral_structured_outputs(
+    response_model: type[T], new_kwargs: dict[str, Any]
+) -> tuple[type[T], dict[str, Any]]:
+    from mistralai.extra import response_format_from_pydantic_model
+
+    new_kwargs["response_format"] = response_format_from_pydantic_model(response_model)
+    new_kwargs.pop("tools", None)
+    new_kwargs.pop("response_model", None)
+    return response_model, new_kwargs
+
+
+# Mode handlers mapping
+mode_handlers = {
+    instructor.Mode.MISTRAL_TOOLS: handle_mistral_tools,
+    instructor.Mode.MISTRAL_STRUCTURED_OUTPUTS: handle_mistral_structured_outputs,
+}
 
 
 @overload

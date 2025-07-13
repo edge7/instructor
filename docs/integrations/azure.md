@@ -32,8 +32,13 @@ If you see an error like the one above, make sure you've set the correct endpoin
 To use Azure OpenAI, you'll need:
 
 1. Azure OpenAI endpoint
-2. API key
+2. API key **or** a Microsoft Entra ID token
 3. Deployment name
+
+The client reads these from the environment variables
+`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, and
+`AZURE_OPENAI_AD_TOKEN` respectively, but you can also pass them
+directly when constructing the client.
 
 ```python
 import os
@@ -49,6 +54,26 @@ client = AzureOpenAI(
 
 # Patch the client with instructor
 client = instructor.from_provider("azure_openai/gpt-4o-mini")
+```
+
+You can also authenticate using Microsoft Entra ID tokens:
+
+```python
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from openai import AzureOpenAI
+import instructor
+import os
+
+token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
+)
+
+client = AzureOpenAI(
+    azure_ad_token_provider=token_provider,
+    api_version="2024-07-01-preview",
+    azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+)
+client = instructor.from_openai(client, model="gpt-4o-mini")
 ```
 
 ## Using Auto Client (Recommended)
@@ -70,6 +95,23 @@ client = instructor.from_provider("azure_openai/gpt-4o-mini")
 async_client = instructor.from_provider("azure_openai/gpt-4o-mini", async_client=True)
 ```
 
+If you prefer Microsoft Entra ID authentication, supply `azure_ad_token_provider`:
+
+```python
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+import instructor
+
+token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
+)
+
+client = instructor.from_provider(
+    "azure_openai/gpt-4o-mini",
+    azure_ad_token_provider=token_provider,
+    azure_endpoint="https://your-resource.openai.azure.com/",
+)
+```
+
 You can also pass credentials as parameters:
 
 ```python
@@ -77,7 +119,7 @@ import instructor
 
 client = instructor.from_provider(
     "azure_openai/gpt-4o-mini",
-    api_key="your-api-key",
+    api_key="your-api-key",  # or azure_ad_token_provider=token_provider,
     azure_endpoint="https://your-resource.openai.azure.com/",
     api_version="2024-02-01"  # Optional, defaults to 2024-02-01
 )

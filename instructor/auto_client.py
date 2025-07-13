@@ -155,18 +155,14 @@ def from_provider(
 
             # Get required Azure OpenAI configuration from environment
             api_key = kwargs.pop("api_key", os.environ.get("AZURE_OPENAI_API_KEY"))
+            azure_ad_token = kwargs.pop(
+                "azure_ad_token", os.environ.get("AZURE_OPENAI_AD_TOKEN")
+            )
+            azure_ad_token_provider = kwargs.pop("azure_ad_token_provider", None)
             azure_endpoint = kwargs.pop(
                 "azure_endpoint", os.environ.get("AZURE_OPENAI_ENDPOINT")
             )
             api_version = kwargs.pop("api_version", "2024-02-01")
-
-            if not api_key:
-                from instructor.exceptions import ConfigurationError
-
-                raise ConfigurationError(
-                    "AZURE_OPENAI_API_KEY is not set. "
-                    "Set it with `export AZURE_OPENAI_API_KEY=<your-api-key>` or pass it as kwarg api_key=<your-api-key>"
-                )
 
             if not azure_endpoint:
                 from instructor.exceptions import ConfigurationError
@@ -176,18 +172,21 @@ def from_provider(
                     "Set it with `export AZURE_OPENAI_ENDPOINT=<your-endpoint>` or pass it as kwarg azure_endpoint=<your-endpoint>"
                 )
 
-            client = (
-                AsyncAzureOpenAI(
-                    api_key=api_key,
-                    api_version=api_version,
-                    azure_endpoint=azure_endpoint,
+            if not any([api_key, azure_ad_token, azure_ad_token_provider]):
+                from instructor.exceptions import ConfigurationError
+
+                raise ConfigurationError(
+                    "Missing credentials for Azure OpenAI. "
+                    "Provide api_key, azure_ad_token, or azure_ad_token_provider."
                 )
-                if async_client
-                else AzureOpenAI(
-                    api_key=api_key,
-                    api_version=api_version,
-                    azure_endpoint=azure_endpoint,
-                )
+
+            client_cls = AsyncAzureOpenAI if async_client else AzureOpenAI
+            client = client_cls(
+                api_key=api_key,
+                azure_ad_token=azure_ad_token,
+                azure_ad_token_provider=azure_ad_token_provider,
+                api_version=api_version,
+                azure_endpoint=azure_endpoint,
             )
             return from_openai(
                 client,

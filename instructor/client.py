@@ -518,7 +518,10 @@ class Instructor:
             hooks=self.hooks,
             **kwargs,
         )
-        return model, model._raw_response
+        raw_response = getattr(model, "_raw_response", None)
+        if raw_response is None and isinstance(model, list) and model:
+            raw_response = getattr(model[0], "_raw_response", None)
+        return model, raw_response
 
     def handle_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """
@@ -683,7 +686,10 @@ class AsyncInstructor(Instructor):
             hooks=self.hooks,
             **kwargs,
         )
-        return response, response._raw_response
+        raw_response = getattr(response, "_raw_response", None)
+        if raw_response is None and isinstance(response, list) and response:
+            raw_response = getattr(response[0], "_raw_response", None)
+        return response, raw_response
 
 
 @overload

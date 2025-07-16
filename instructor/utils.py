@@ -728,7 +728,8 @@ def map_to_gemini_function_schema(obj: dict[str, Any]) -> dict[str, Any]:
         nullable: bool | None = None
         items: FunctionSchema | None = None
         required: list[str] | None = None
-        type: str
+        type: str | None = None
+        anyOf: list[dict[str, Any]] | None = None
         properties: dict[str, FunctionSchema] | None = None
 
     # Resolve any $ref references in the schema
@@ -764,8 +765,18 @@ def map_to_gemini_function_schema(obj: dict[str, Any]) -> dict[str, Any]:
                     transformed.update(actual_type)
                     transformed["nullable"] = True
                 else:
-                    # This is a true Union type - keep as is and let validation catch it
-                    transformed[key] = transform_schema_node(value)
+                    # Check if this is a Decimal type (string | number)
+                    types_in_union = []
+                    for item in value:
+                        if isinstance(item, dict) and "type" in item:
+                            types_in_union.append(item["type"])
+                    
+                    if set(types_in_union) == {"string", "number"}:
+                        # This is a Decimal type - keep the anyOf structure
+                        transformed[key] = transform_schema_node(value)
+                    else:
+                        # This is a true Union type - keep as is and let validation catch it
+                        transformed[key] = transform_schema_node(value)
             else:
                 transformed[key] = transform_schema_node(value)
 

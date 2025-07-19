@@ -90,7 +90,11 @@ def from_bedrock(
     if use_async:
         return AsyncInstructor(
             client=client,
-            create=instructor.patch(create=async_wrapper, mode=mode),
+            create=instructor.patch(
+                create=async_wrapper,
+                mode=mode,
+                adapter=instructor.BEDROCK_ADAPTER,
+            ),
             provider=instructor.Provider.BEDROCK,
             mode=mode,
             **kwargs,
@@ -98,7 +102,11 @@ def from_bedrock(
     else:
         return Instructor(
             client=client,
-            create=instructor.patch(create=create, mode=mode),
+            create=instructor.patch(
+                create=create,
+                mode=mode,
+                adapter=instructor.BEDROCK_ADAPTER,
+            ),
             provider=instructor.Provider.BEDROCK,
             mode=mode,
             **kwargs,

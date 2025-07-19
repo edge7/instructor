@@ -781,6 +781,7 @@ def from_openai(
                 }
                 else partial(map_chat_completion_to_response, client=client),
                 mode=mode,
+                adapter=instructor.OPENAI_ADAPTER,
             ),
             mode=mode,
             provider=provider,
@@ -799,6 +800,7 @@ def from_openai(
                 }
                 else partial(async_map_chat_completion_to_response, client=client),
                 mode=mode,
+                adapter=instructor.OPENAI_ADAPTER,
             ),
             mode=mode,
             provider=provider,

@@ -247,3 +247,11 @@ BEDROCK_HANDLERS = {
         "response": handle_bedrock_tools,
     },
 }
+
+# Support generic mode names for Bedrock
+BEDROCK_HANDLERS.update(
+    {
+        Mode.JSON: BEDROCK_HANDLERS[Mode.BEDROCK_JSON],
+        Mode.TOOLS: BEDROCK_HANDLERS[Mode.BEDROCK_TOOLS],
+    }
+)

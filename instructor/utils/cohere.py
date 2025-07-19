@@ -159,3 +159,11 @@ COHERE_HANDLERS = {
         "response": handle_cohere_json_schema,
     },
 }
+
+# Generic mode aliases for Cohere
+COHERE_HANDLERS.update(
+    {
+        Mode.TOOLS: COHERE_HANDLERS[Mode.COHERE_TOOLS],
+        Mode.JSON_SCHEMA: COHERE_HANDLERS[Mode.COHERE_JSON_SCHEMA],
+    }
+)

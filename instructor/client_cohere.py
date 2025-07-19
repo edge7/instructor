@@ -59,7 +59,11 @@ def from_cohere(
     if isinstance(client, cohere.Client):
         return instructor.Instructor(
             client=client,
-            create=instructor.patch(create=client.chat, mode=mode),
+            create=instructor.patch(
+                create=client.chat,
+                mode=mode,
+                adapter=instructor.COHERE_ADAPTER,
+            ),
             provider=instructor.Provider.COHERE,
             mode=mode,
             **kwargs,
@@ -68,7 +72,11 @@ def from_cohere(
     if isinstance(client, cohere.AsyncClient):
         return instructor.AsyncInstructor(
             client=client,
-            create=instructor.patch(create=client.chat, mode=mode),
+            create=instructor.patch(
+                create=client.chat,
+                mode=mode,
+                adapter=instructor.COHERE_ADAPTER,
+            ),
             provider=instructor.Provider.COHERE,
             mode=mode,
             **kwargs,

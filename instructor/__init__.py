@@ -17,6 +17,11 @@ from .schema_utils import (
     generate_gemini_schema,
 )
 from .patch import apatch, patch
+from .provider_adapter import (
+    ProviderAdapter,
+    OPENAI_ADAPTER,
+    ADAPTER_REGISTRY,
+)
 from .client import (
     Instructor,
     AsyncInstructor,
@@ -47,6 +52,9 @@ __all__ = [
     "generate_anthropic_schema",
     "generate_gemini_schema",
     "Mode",
+    "ProviderAdapter",
+    "OPENAI_ADAPTER",
+    "ADAPTER_REGISTRY",
     "patch",
     "apatch",
     "FinetuneFormat",

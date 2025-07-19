@@ -114,3 +114,11 @@ WRITER_HANDLERS = {
         "response": handle_writer_json,
     },
 }
+
+# Support generic mode names for Writer
+WRITER_HANDLERS.update(
+    {
+        Mode.TOOLS: WRITER_HANDLERS[Mode.WRITER_TOOLS],
+        Mode.JSON: WRITER_HANDLERS[Mode.WRITER_JSON],
+    }
+)

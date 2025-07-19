@@ -463,3 +463,12 @@ ANTHROPIC_HANDLERS = {
         "response": handle_anthropic_parallel_tools,
     },
 }
+
+# Allow generic mode names for Anthropic by duplicating handler mappings.
+ANTHROPIC_HANDLERS.update(
+    {
+        Mode.TOOLS: ANTHROPIC_HANDLERS[Mode.ANTHROPIC_TOOLS],
+        Mode.JSON: ANTHROPIC_HANDLERS[Mode.ANTHROPIC_JSON],
+        Mode.PARALLEL_TOOLS: ANTHROPIC_HANDLERS[Mode.ANTHROPIC_PARALLEL_TOOLS],
+    }
+)

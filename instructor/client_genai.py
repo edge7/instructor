@@ -61,7 +61,11 @@ def from_genai(
 
         return instructor.AsyncInstructor(
             client=client,
-            create=instructor.patch(create=async_wrapper, mode=mode),
+            create=instructor.patch(
+                create=async_wrapper,
+                mode=mode,
+                adapter=instructor.GOOGLE_ADAPTER,
+            ),
             provider=instructor.Provider.GENAI,
             mode=mode,
             **kwargs,
@@ -75,7 +79,11 @@ def from_genai(
 
     return instructor.Instructor(
         client=client,
-        create=instructor.patch(create=sync_wrapper, mode=mode),
+        create=instructor.patch(
+            create=sync_wrapper,
+            mode=mode,
+            adapter=instructor.GOOGLE_ADAPTER,
+        ),
         provider=instructor.Provider.GENAI,
         mode=mode,
         **kwargs,

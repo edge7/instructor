@@ -13,8 +13,8 @@ from typing_extensions import ParamSpec
 from openai import AsyncOpenAI, OpenAI  # type: ignore[import-not-found]
 from pydantic import BaseModel  # type: ignore[import-not-found]
 
-from instructor.process_response import handle_response_model
 from instructor.retry import retry_async, retry_sync
+from instructor.provider_adapter import ProviderAdapter, OPENAI_ADAPTER
 from instructor.utils import is_async
 from instructor.hooks import Hooks
 from instructor.templating import handle_templating
@@ -90,6 +90,7 @@ def handle_context(
 def patch(
     client: OpenAI,
     mode: Mode = Mode.TOOLS,
+    adapter: ProviderAdapter = OPENAI_ADAPTER,
 ) -> OpenAI: ...
 
 
@@ -97,6 +98,7 @@ def patch(
 def patch(
     client: AsyncOpenAI,
     mode: Mode = Mode.TOOLS,
+    adapter: ProviderAdapter = OPENAI_ADAPTER,
 ) -> AsyncOpenAI: ...
 
 
@@ -104,6 +106,7 @@ def patch(
 def patch(
     create: Callable[T_ParamSpec, T_Retval],
     mode: Mode = Mode.TOOLS,
+    adapter: ProviderAdapter = OPENAI_ADAPTER,
 ) -> InstructorChatCompletionCreate: ...
 
 
@@ -111,6 +114,7 @@ def patch(
 def patch(
     create: Awaitable[T_Retval],
     mode: Mode = Mode.TOOLS,
+    adapter: ProviderAdapter = OPENAI_ADAPTER,
 ) -> InstructorChatCompletionCreate: ...
 
 
@@ -118,6 +122,7 @@ def patch(  # type: ignore
     client: OpenAI | AsyncOpenAI | None = None,
     create: Callable[T_ParamSpec, T_Retval] | None = None,
     mode: Mode = Mode.TOOLS,
+    adapter: ProviderAdapter = OPENAI_ADAPTER,
 ) -> OpenAI | AsyncOpenAI:
     """
     Patch the `client.chat.completions.create` method
@@ -166,9 +171,9 @@ def patch(  # type: ignore
 
         context = handle_context(context, validation_context)
 
-        response_model, new_kwargs = handle_response_model(
-            response_model=response_model, mode=mode, **kwargs
-        )  # type: ignore
+        response_model, new_kwargs = adapter.prepare_request(
+            response_model=response_model, kwargs=kwargs, mode=mode
+        )
         new_kwargs = handle_templating(new_kwargs, mode=mode, context=context)
 
         # Attempt cache lookup **before** hitting retry layer
@@ -195,6 +200,7 @@ def patch(  # type: ignore
             strict=strict,
             mode=mode,
             hooks=hooks,
+            adapter=adapter,
         )
 
         # Store in cache *after* successful call
@@ -235,9 +241,9 @@ def patch(  # type: ignore
 
         context = handle_context(context, validation_context)
         # print(f"instructor.patch: patched_function {func.__name__}")
-        response_model, new_kwargs = handle_response_model(
-            response_model=response_model, mode=mode, **kwargs
-        )  # type: ignore
+        response_model, new_kwargs = adapter.prepare_request(
+            response_model=response_model, kwargs=kwargs, mode=mode
+        )
 
         new_kwargs = handle_templating(new_kwargs, mode=mode, context=context)
 
@@ -265,6 +271,7 @@ def patch(  # type: ignore
             strict=strict,
             kwargs=new_kwargs,
             mode=mode,
+            adapter=adapter,
         )
 
         # Save to cache

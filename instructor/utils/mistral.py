@@ -120,3 +120,6 @@ MISTRAL_HANDLERS = {
         "response": handle_mistral_structured_outputs,
     },
 }
+
+# Generic mode aliases for Mistral
+MISTRAL_HANDLERS.update({Mode.TOOLS: MISTRAL_HANDLERS[Mode.MISTRAL_TOOLS]})

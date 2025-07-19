@@ -105,3 +105,11 @@ CEREBRAS_HANDLERS = {
         "response": handle_cerebras_json,
     },
 }
+
+# Generic mode aliases for Cerebras
+CEREBRAS_HANDLERS.update(
+    {
+        Mode.TOOLS: CEREBRAS_HANDLERS[Mode.CEREBRAS_TOOLS],
+        Mode.JSON: CEREBRAS_HANDLERS[Mode.CEREBRAS_JSON],
+    }
+)

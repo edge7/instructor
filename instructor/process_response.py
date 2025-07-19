@@ -304,7 +304,9 @@ def handle_response_model(
         Mode.GEMINI_JSON: handle_gemini_json,
         Mode.GEMINI_TOOLS: handle_gemini_tools,
         Mode.GENAI_TOOLS: lambda rm, nk: handle_genai_tools(rm, nk, autodetect_images),
-        Mode.GENAI_STRUCTURED_OUTPUTS: lambda rm, nk: handle_genai_structured_outputs(rm, nk, autodetect_images),
+        Mode.GENAI_STRUCTURED_OUTPUTS: lambda rm, nk: handle_genai_structured_outputs(
+            rm, nk, autodetect_images
+        ),
         Mode.VERTEXAI_TOOLS: handle_vertexai_tools,
         Mode.VERTEXAI_JSON: handle_vertexai_json,
         Mode.CEREBRAS_JSON: handle_cerebras_json,

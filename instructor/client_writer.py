@@ -48,7 +48,11 @@ def from_writer(
     if isinstance(client, Writer):
         return instructor.Instructor(
             client=client,
-            create=instructor.patch(create=client.chat.chat, mode=mode),
+            create=instructor.patch(
+                create=client.chat.chat,
+                mode=mode,
+                adapter=instructor.WRITER_ADAPTER,
+            ),
             provider=instructor.Provider.WRITER,
             mode=mode,
             **kwargs,
@@ -56,7 +60,11 @@ def from_writer(
 
     return instructor.AsyncInstructor(
         client=client,
-        create=instructor.patch(create=client.chat.chat, mode=mode),
+        create=instructor.patch(
+            create=client.chat.chat,
+            mode=mode,
+            adapter=instructor.WRITER_ADAPTER,
+        ),
         provider=instructor.Provider.WRITER,
         mode=mode,
         **kwargs,

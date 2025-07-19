@@ -64,7 +64,11 @@ def from_mistral(
 
         return instructor.AsyncInstructor(
             client=client,
-            create=instructor.patch(create=async_wrapper, mode=mode),
+            create=instructor.patch(
+                create=async_wrapper,
+                mode=mode,
+                adapter=instructor.MISTRAL_ADAPTER,
+            ),
             provider=instructor.Provider.MISTRAL,
             mode=mode,
             **kwargs,
@@ -79,7 +83,11 @@ def from_mistral(
 
     return instructor.Instructor(
         client=client,
-        create=instructor.patch(create=sync_wrapper, mode=mode),
+        create=instructor.patch(
+            create=sync_wrapper,
+            mode=mode,
+            adapter=instructor.MISTRAL_ADAPTER,
+        ),
         provider=instructor.Provider.MISTRAL,
         mode=mode,
         **kwargs,

@@ -61,7 +61,11 @@ def from_fireworks(
 
         return AsyncInstructor(
             client=client,
-            create=instructor.patch(create=async_wrapper, mode=mode),
+            create=instructor.patch(
+                create=async_wrapper,
+                mode=mode,
+                adapter=instructor.FIREWORKS_ADAPTER,
+            ),
             provider=instructor.Provider.FIREWORKS,
             mode=mode,
             **kwargs,
@@ -70,7 +74,11 @@ def from_fireworks(
     if isinstance(client, Fireworks):
         return Instructor(
             client=client,
-            create=instructor.patch(create=client.chat.completions.create, mode=mode),  # type: ignore
+            create=instructor.patch(
+                create=client.chat.completions.create,  # type: ignore
+                mode=mode,
+                adapter=instructor.FIREWORKS_ADAPTER,
+            ),
             provider=instructor.Provider.FIREWORKS,
             mode=mode,
             **kwargs,

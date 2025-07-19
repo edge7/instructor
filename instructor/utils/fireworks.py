@@ -117,3 +117,11 @@ FIREWORKS_HANDLERS = {
         "response": handle_fireworks_json,
     },
 }
+
+# Generic mode aliases for Fireworks
+FIREWORKS_HANDLERS.update(
+    {
+        Mode.TOOLS: FIREWORKS_HANDLERS[Mode.FIREWORKS_TOOLS],
+        Mode.JSON: FIREWORKS_HANDLERS[Mode.FIREWORKS_JSON],
+    }
+)

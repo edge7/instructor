@@ -9,11 +9,8 @@ from typing import Any, Callable, TypeVar
 from instructor.exceptions import InstructorRetryException
 from instructor.hooks import Hooks
 from instructor.mode import Mode
-from instructor.reask import handle_reask_kwargs
-from instructor.process_response import (
-    process_response,
-    process_response_async,
-)
+from instructor.provider_adapter import ProviderAdapter, OPENAI_ADAPTER
+from instructor.provider_adapter import ProviderAdapter, OPENAI_ADAPTER
 from instructor.utils import update_total_usage
 from instructor.validators import AsyncValidationError
 from openai.types.chat import ChatCompletion
@@ -146,6 +143,7 @@ def retry_sync(
     strict: bool | None = None,
     mode: Mode = Mode.TOOLS,
     hooks: Hooks | None = None,
+    adapter: ProviderAdapter = OPENAI_ADAPTER,
 ) -> T_Model | None:
     """
     Retry a synchronous function upon specified exceptions.
@@ -189,10 +187,10 @@ def retry_sync(
                         response=response, total_usage=total_usage
                     )
 
-                    return process_response(  # type: ignore
+                    return adapter.parse_response(  # type: ignore
                         response=response,
                         response_model=response_model,
-                        validation_context=context,
+                        context=context,
                         strict=strict,
                         mode=mode,
                         stream=stream,
@@ -200,11 +198,11 @@ def retry_sync(
                 except (ValidationError, JSONDecodeError) as e:
                     logger.debug(f"Parse error: {e}")
                     hooks.emit_parse_error(e)
-                    kwargs = handle_reask_kwargs(
+                    kwargs = adapter.reask(
                         kwargs=kwargs,
-                        mode=mode,
                         response=response,
                         exception=e,
+                        mode=mode,
                     )
                     raise e
     except RetryError as e:
@@ -232,6 +230,7 @@ async def retry_async(
     strict: bool | None = None,
     mode: Mode = Mode.TOOLS,
     hooks: Hooks | None = None,
+    adapter: ProviderAdapter = OPENAI_ADAPTER,
 ) -> T_Model | None:
     """
     Retry an asynchronous function upon specified exceptions.
@@ -275,10 +274,10 @@ async def retry_async(
                         response=response, total_usage=total_usage
                     )
 
-                    return await process_response_async(
+                    return await adapter.parse_response_async(
                         response=response,
                         response_model=response_model,
-                        validation_context=context,
+                        context=context,
                         strict=strict,
                         mode=mode,
                         stream=stream,
@@ -290,11 +289,11 @@ async def retry_async(
                 ) as e:
                     logger.debug(f"Parse error: {e}")
                     hooks.emit_parse_error(e)
-                    kwargs = handle_reask_kwargs(
+                    kwargs = adapter.reask(
                         kwargs=kwargs,
-                        mode=mode,
                         response=response,
                         exception=e,
+                        mode=mode,
                     )
                     raise e
     except RetryError as e:

@@ -59,3 +59,6 @@ PERPLEXITY_HANDLERS = {
         "response": handle_perplexity_json,
     },
 }
+
+# Allow using generic JSON mode for Perplexity
+PERPLEXITY_HANDLERS.update({Mode.JSON: PERPLEXITY_HANDLERS[Mode.PERPLEXITY_JSON]})

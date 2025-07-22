@@ -251,6 +251,7 @@ async def process_response_async(
 
     if isinstance(model, AdapterBase):
         logger.debug(f"Returning model from AdapterBase")
+        model.content._raw_response = response
         return model.content
 
     model._raw_response = response
@@ -352,6 +353,7 @@ def process_response(
 
     if isinstance(model, AdapterBase):
         logger.debug(f"Returning model from AdapterBase")
+        model.content._raw_response = response
         return model.content
 
     model._raw_response = response

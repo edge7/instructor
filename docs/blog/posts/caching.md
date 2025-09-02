@@ -588,7 +588,7 @@ Here's a **validated** real-world performance comparison across different cachin
 
 !!! success "Validated Performance"
 
-    These numbers are from actual test runs using our comprehensive [caching examples](../../examples/caching/). The `functools.cache` result showing **207,636x improvement** demonstrates the dramatic impact of in-memory caching.
+    These numbers are from actual test runs using our comprehensive [caching examples](https://github.com/jxnl/instructor/tree/main/examples/caching). The `functools.cache` result showing **207,636x improvement** demonstrates the dramatic impact of in-memory caching.
 
 ### Cost Impact Analysis
 
@@ -945,7 +945,7 @@ These are **actual results** from running the examples, not theoretical projecti
 - [Dictionary Operations](../../concepts/dictionary_operations.md) - Low-level optimization techniques
 
 ### Working Examples
-- [**Caching Examples**](../../examples/caching/) - **Complete working examples** validating all strategies
+- [**Caching Examples**](https://github.com/jxnl/instructor/tree/main/examples/caching) - **Complete working examples** validating all strategies
 - [Streaming Responses](../../concepts/partial.md) - Combine caching with real-time streaming
 - [Async Processing](../../blog/posts/learn-async.md) - Async patterns for high-throughput applications
 - [Batch Processing](../../examples/batch_job_oai.md) - Efficient batch operations with caching

@@ -108,11 +108,11 @@ By combining Gemini's multimodal capabilities with Instructor's structured outpu
 No more wrestling with parsing rules, managing embeddings, or building complex pipelines - just define your data model and let the LLM do the heavy lifting.
 
 ## Related Documentation
-- [Multimodal Processing](/concepts/multimodal) - Core multimodal concepts
+- [Multimodal Processing](../../concepts/multimodal.md) - Core multimodal concepts
 
 ## See Also
-- [Gemini Multimodal Features](multimodal-gemini) - Full Gemini capabilities
-- [PDF Citation Generation](generating-pdf-citations) - Extract citations from PDFs
-- [RAG and Beyond](rag-and-beyond) - Advanced document processing
+- [Gemini Multimodal Features](multimodal-gemini.md) - Full Gemini capabilities
+- [PDF Citation Generation](generating-pdf-citations.md) - Extract citations from PDFs
+- [RAG and Beyond](rag-and-beyond.md) - Advanced document processing
 
 If you liked this, give `instructor` a try today and see how much easier structured outputs makes working with LLMs become. [Get started with Instructor today!](../../index.md)

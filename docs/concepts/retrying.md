@@ -579,9 +579,9 @@ if __name__ == "__main__":
 - [Tenacity Documentation](https://tenacity.readthedocs.io/)
 - [Instructor Error Handling](./error_handling.md)
 - [Validation Best Practices](./validation.md)
-- [Async Processing Guide](./async.md)
+- [Async Processing Guide](../blog/posts/learn-async.md)
 - [Python Retry Patterns](https://pypi.org/project/tenacity/)
 
 ---
 
-**Next Steps**: Learn about [error handling patterns](./error_handling.md) or explore [async processing](./async.md) for high-performance applications.
+**Next Steps**: Learn about [error handling patterns](./error_handling.md) or explore [async processing](../blog/posts/learn-async.md) for high-performance applications.

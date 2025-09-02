@@ -338,10 +338,10 @@ for _ in range(2):
 ```
 
 ## Related Documentation
-- [Caching Strategies](/concepts/caching) - General caching concepts
-- [Anthropic Integration](/integrations/anthropic) - Full Anthropic guide
+- [Caching Strategies](../../concepts/caching.md) - General caching concepts
+- [Anthropic Integration](../../integrations/anthropic.md) - Full Anthropic guide
 
 ## See Also
-- [Anthropic Structured Outputs](structured-output-anthropic) - Use with caching
-- [Response Caching](caching) - General caching strategies
-- [Performance Monitoring](logfire) - Track cache performance
+- [Anthropic Structured Outputs](structured-output-anthropic.md) - Use with caching
+- [Response Caching](caching.md) - General caching strategies
+- [Performance Monitoring](logfire.md) - Track cache performance

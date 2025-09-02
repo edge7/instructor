@@ -14,7 +14,7 @@ description: Learn how the Image, PDF and Audio class in Instructor enables seam
 
 Instructor provides a unified, provider-agnostic interface for working with multimodal inputs like images, PDFs, and audio files.
 
-With Instructor's multimodal objects, you can easily load media from URLs, local files, or base64 strings using a consistent API that works across different AI providers (OpenAI, Anthropic, Mistral, etc.).
+With Instructor's multimodal objects, you can easily load media from URLs, Google Cloud Storage URLs, local files, or base64 strings using a consistent API that works across different AI providers (OpenAI, Anthropic, Mistral, etc.).
 
 Instructor handles all the provider-specific formatting requirements behind the scenes, ensuring your code remains clean and future-proof as provider APIs evolve. Let's see how to use the Image, Audio and PDF classes.
 
@@ -22,12 +22,13 @@ Instructor handles all the provider-specific formatting requirements behind the 
 
 This class represents an image that can be loaded from a URL or file path. It provides a set of methods to create `Image` instances from different sources (Eg. URLs, paths and base64 strings). The following shows which methods are supported for the individual providers.
 
-| Method          | OpenAI | Anthropic | Google GenAI |
-| --------------- | ------ | --------- | ------------ |
-| `from_url()`    | ✅     | ✅        | ✅           |
-| `from_path()`   | ✅     | ✅        | ✅           |
-| `from_base64()` | ✅     | ✅        | ✅           |
-| `autodetect()`  | ✅     | ✅        | ✅           |
+| Method            | OpenAI | Anthropic | Google GenAI |
+| ----------------- | ------ | --------- | ------------ |
+| `from_url()`      | ✅     | ✅        | ✅           |
+| `from_gs_url()`   | ✅     | ✅        | ✅           |
+| `from_path()`     | ✅     | ✅        | ✅           |
+| `from_base64()`   | ✅     | ✅        | ✅           |
+| `autodetect()`    | ✅     | ✅        | ✅           |
 
 We also support Anthropic Prompt Caching for images with the `ImageWith
 
@@ -35,7 +36,7 @@ We also support Anthropic Prompt Caching for images with the `ImageWith
 
 By using the `Image` class, we can abstract away the differences between the different formats, allowing you to work with a unified interface.
 
-You can create an `Image` instance from a URL or file path using the `from_url` or `from_path` methods. The `Image` class will automatically convert the image to a base64-encoded string and include it in the API request.
+You can create an `Image` instance from a URL, Google Cloud Storage (GCS) URL, or file path using the `from_url`, `from_gs_url`, or `from_path` methods. The `Image` class will automatically convert the image to a base64-encoded string and include it in the API request.
 
 ```python
 import instructor
@@ -71,7 +72,45 @@ print(response)
 # > description='A bush with numerous clusters of blueberries surrounded by green leaves, under a cloudy sky.' items=['blueberries', 'green leaves', 'cloudy sky']
 ```
 
-We also provide a `autodetect_image` keyword argument that allows you to provide URLs or file paths as normal strings when you set it to true.
+### Google Cloud Storage Support
+
+Instructor now supports loading images directly from Google Cloud Storage URLs. This is particularly useful when working with images stored in GCS buckets.
+
+```python
+import instructor
+from instructor.processing.multimodal import Image
+from pydantic import BaseModel
+
+
+class ImageDescription(BaseModel):
+    description: str
+    items: list[str]
+
+
+# Load image from GCS URL (must be publicly accessible)
+gs_url = "gs://my-bucket/path/to/image.jpg"
+
+client = instructor.from_provider("openai/gpt-4.1-mini")
+
+response = client.chat.completions.create(
+    response_model=ImageDescription,
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                "What is in this image?",
+                Image.from_gs_url(gs_url),
+            ],
+        }
+    ],
+)
+
+print(response)
+```
+
+> **Note**: GCS URLs must point to publicly accessible objects. The `from_gs_url` method converts `gs://` URLs to `https://storage.googleapis.com/` URLs for access.
+
+We also provide an `autodetect_images` keyword argument that allows you to provide URLs, GCS URLs, or file paths as normal strings when you set it to true. The system will automatically detect and handle different media types including images, audio, and PDFs.
 
 You can see an example below.
 
@@ -163,14 +202,17 @@ By leveraging Instructor's multimodal capabilities, you can focus on building yo
 
 Similar to the Image class, we provide methods to create `Audio` instances.
 
-| Method        | OpenAI | Google GenAI |
-| ------------- | ------ | ------------ |
-| `from_url()`  | ✅     | ✅           |
-| `from_path()` | ✅     | ✅           |
+| Method          | OpenAI | Google GenAI |
+| --------------- | ------ | ------------ |
+| `from_url()`    | ✅     | ✅           |
+| `from_gs_url()` | ✅     | ✅           |
+| `from_path()`   | ✅     | ✅           |
+| `from_base64()` | ✅     | ✅           |
+| `autodetect()`  | ✅     | ✅           |
 
-The `Audio` class represents an audio file that can be loaded from a URL or file path. It provides methods to create `Audio` instances using the `from_path` and `from_url` methods.
+The `Audio` class represents an audio file that can be loaded from a URL, Google Cloud Storage URL, or file path. It provides methods to create `Audio` instances using the `from_path`, `from_url`, `from_gs_url`, `from_base64`, and `autodetect` methods.
 
-The `Audio` class will automatically convert it to a the right format and include it in the API request.
+The `Audio` class will automatically convert it to the right format and include it in the API request.
 
 ```python
 from openai import OpenAI
@@ -210,18 +252,59 @@ resp = client.chat.completions.create(
 print(resp)
 ```
 
+### Google Cloud Storage Support
+
+You can also load audio files directly from Google Cloud Storage:
+
+```python
+from openai import OpenAI
+from pydantic import BaseModel
+import instructor
+from instructor.processing.multimodal import Audio
+
+# Initialize the client
+client = instructor.from_provider("openai/gpt-4o-audio-preview")
+
+# Define our response model
+class AudioDescription(BaseModel):
+    summary: str
+    transcript: str
+
+# Load audio from GCS URL (must be publicly accessible)
+gs_url = "gs://my-bucket/path/to/audio.wav"
+
+# Make the API call with the GCS audio file
+resp = client.chat.completions.create(
+    response_model=AudioDescription,
+    modalities=["text"],
+    audio={"voice": "alloy", "format": "wav"},
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                "Extract the following information from the audio:",
+                Audio.from_gs_url(gs_url),
+            ],
+        },
+    ],
+)
+
+print(resp)
+```
+
 ## `PDF`
 
 The `PDF` class represents a PDF file that can be loaded from a URL or file path.
 
 It provides methods to create `PDF` instances and is currently supported for OpenAI, Mistral, GenAI and Anthropic client integrations.
 
-| Method          | OpenAI | Anthropic | Google GenAI | Mistral |
-| --------------- | ------ | --------- | ------------ | ------- |
-| `from_url()`    | ✅     | ✅        | ✅           | ✅      |
-| `from_path()`   | ✅     | ✅        | ✅           | ❎      |
-| `from_base64()` | ✅     | ✅        | ✅           | ❎      |
-| `autodetect()`  | ✅     | ✅        | ✅           | ✅      |
+| Method            | OpenAI | Anthropic | Google GenAI | Mistral |
+| ----------------- | ------ | --------- | ------------ | ------- |
+| `from_url()`      | ✅     | ✅        | ✅           | ✅      |
+| `from_gs_url()`   | ✅     | ✅        | ✅           | ✅      |
+| `from_path()`     | ✅     | ✅        | ✅           | ❎      |
+| `from_base64()`   | ✅     | ✅        | ✅           | ❎      |
+| `autodetect()`    | ✅     | ✅        | ✅           | ✅      |
 
 For Gemini, we also provide two additional methods that make working with the google-genai files package easy which you can access in the `PDFWithGenaiFile` object.
 
@@ -264,6 +347,43 @@ We provide examples of how to use all three object classes below.
 
  print(response)
  # > Total = 220, items = ['English Tea', 'Tofu']
+```
+
+### Google Cloud Storage Support
+
+You can load PDF files directly from Google Cloud Storage URLs:
+
+```python
+from openai import OpenAI
+import instructor
+from pydantic import BaseModel
+from instructor.processing.multimodal import PDF
+
+# Set up the client
+gs_url = "gs://my-bucket/path/to/document.pdf"
+client = instructor.from_provider("openai/gpt-4.1-mini")
+
+# Create a model for analyzing PDFs
+class Invoice(BaseModel):
+    total: float
+    items: list[str]
+
+# Load and analyze a PDF from GCS (must be publicly accessible)
+response = client.chat.completions.create(
+    response_model=Invoice,
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                "Analyze this document",
+                PDF.from_gs_url(gs_url),
+            ],
+        }
+    ],
+)
+
+print(response)
+# > Total = 220, items = ['English Tea', 'Tofu']
 ```
 
 ### Caching

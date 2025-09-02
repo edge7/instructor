@@ -141,10 +141,10 @@ By combining Anthropic's Claude with Instructor's structured output capabilities
 As the AI landscape continues to evolve, staying up-to-date with the latest tools and techniques is crucial. We encourage you to explore these features and share your experiences with the community. Happy coding!
 
 ## Related Documentation
-- [How Patching Works](/concepts/patching) - Understand provider integration
-- [Anthropic Integration](/integrations/anthropic) - Complete setup guide
+- [How Patching Works](../../concepts/patching.md) - Understand provider integration
+- [Anthropic Integration](../../integrations/anthropic.md) - Complete setup guide
 
 ## See Also
-- [Anthropic Prompt Caching](anthropic-prompt-caching) - Optimize Anthropic costs
-- [Unified Provider Interface](announcing-unified-provider-interface) - Switch providers easily
-- [Framework Comparison](best_framework) - Why Instructor excels
+- [Anthropic Prompt Caching](anthropic-prompt-caching.md) - Optimize Anthropic costs
+- [Unified Provider Interface](announcing-unified-provider-interface.md) - Switch providers easily
+- [Framework Comparison](best_framework.md) - Why Instructor excels

@@ -335,15 +335,15 @@ Semantic validation represents a significant advancement in ensuring the quality
 
 As these techniques mature, we can expect to see semantic validation become a standard part of AI application development, especially in regulated industries where output quality is critical.
 
-To get started with semantic validation in your projects, check out the [Semantic Validation documentation](https://python.useinstructor.com/concepts/semantic_validation/) and explore the various examples and patterns.
+To get started with semantic validation in your projects, check out the [Semantic Validation documentation](https://python.useinstructor.com../../concepts/semantic_validation/.md) and explore the various examples and patterns.
 
 This approach isn't just a technical improvement-it's a fundamental shift in how we think about validation, moving from rigid rules to intelligent understanding of content and context.
 
 ## Related Documentation
-- [Validation Fundamentals](/concepts/validation) - Core validation concepts
-- [LLM Validation](/concepts/llm_validation) - Using LLMs for validation
+- [Validation Fundamentals](../../concepts/validation.md) - Core validation concepts
+- [Semantic Validation](../../concepts/semantic_validation.md) - Using LLMs for validation
 
 ## See Also
-- [Validation Deep Dive](validation-part1) - Foundation validation concepts
-- [Anthropic Prompt Caching](anthropic-prompt-caching) - Optimize validation costs
-- [Monitoring with Logfire](logfire) - Track validation performance
+- [Validation Deep Dive](validation-part1.md) - Foundation validation concepts
+- [Anthropic Prompt Caching](anthropic-prompt-caching.md) - Optimize validation costs
+- [Monitoring with Logfire](logfire.md) - Track validation performance

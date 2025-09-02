@@ -270,12 +270,12 @@ except ValidationError as e:
 ```
 
 ## Related Documentation
-- [Validation Guide](/concepts/validation) - Validate citations
+- [Validation Guide](../../concepts/validation.md) - Validate citations
 
 ## See Also
-- [RAG Techniques](rag-and-beyond) - Use citations in RAG
-- [PDF Citations](generating-pdf-citations) - Extract from PDFs
-- [Validation Basics](validation-part1) - Ensure citation quality
+- [RAG Techniques](rag-and-beyond.md) - Use citations in RAG
+- [PDF Citations](generating-pdf-citations.md) - Extract from PDFs
+- [Validation Basics](validation-part1.md) - Ensure citation quality
 
 ## Conclusion
 

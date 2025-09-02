@@ -616,7 +616,7 @@ By following the patterns and best practices outlined in this guide, you can bui
 
 - Explore the [FastAPI integration guide](../concepts/fastapi.md) for advanced API patterns
 - Check out [validation techniques](../concepts/validation.md) for robust data handling
-- Learn about [streaming responses](../concepts/streaming.md) for real-time applications
+- Learn about [streaming responses](partial_streaming.md) for real-time applications
 
 ![Image of hero record in the database](db.png)
 

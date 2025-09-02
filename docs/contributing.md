@@ -259,7 +259,7 @@ python scripts/check_blog_excerpts.py
 python scripts/make_sitemap.py
 ```
 
-For detailed documentation on each script, see [scripts/README.md](../scripts/README.md).
+For detailed documentation on each script, see the `scripts/README.md` file in the project repository.
 
 ## Using Cursor to Build PRs
 

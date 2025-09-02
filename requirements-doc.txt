@@ -6,3 +6,4 @@ mkdocstrings
 mkdocstrings-python 
 mkdocs-jupyter 
 mkdocs-redirects
+mkdocs-llmstxt

@@ -23,7 +23,7 @@ We're excited to announce Instructor's integration with OpenAI's new Responses A
 
 The Responses API represents a significant shift in how we interact with OpenAI models. With Instructor's integration, you can leverage this new API with our familiar, type-safe interface.
 
-For our full documentation of the features we support, check out our full [documentation here](../../integrations/openai-responses.md).
+For our full documentation of the features we support, check out our full [OpenAI integration guide](../../integrations/openai.md).
 
 Getting started is now easier than ever. With our unified provider interface, you can initialize your client with a single line of code. This means less time dealing with configuration and more time building features that matter.
 
@@ -150,6 +150,6 @@ To start using the new Responses API integration, update to the latest version o
 
 This integration represents a significant step forward in making LLM development more accessible and powerful. We're excited to see what you'll build with these new capabilities.
 
-For more detailed information about using the Responses API with Instructor, check out our [OpenAI Responses API Guide](../../integrations/openai-responses.md).
+For more detailed information about using the Responses API with Instructor, check out our [OpenAI integration guide](../../integrations/openai.md).
 
 Happy coding!

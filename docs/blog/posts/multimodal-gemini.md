@@ -218,11 +218,10 @@ To address these limitations and expand the capabilities of our video analysis s
 By addressing these challenges and exploring these new directions, we can create a more comprehensive and nuanced video analysis system, opening up even more possibilities for applications in travel, education, and beyond.
 
 ## Related Documentation
-- [Multimodal Concepts](/concepts/multimodal) - Working with images, video, and audio
-- [Image Processing](/concepts/images) - Image-specific techniques
-- [Google Integration](/integrations/google) - Complete Gemini setup guide
+- [Multimodal Concepts](../../concepts/multimodal.md) - Working with images, video, and audio
+- [Google Integration](../../integrations/google.md) - Complete Gemini setup guide
 
 ## See Also
-- [OpenAI Multimodal](openai-multimodal) - Compare multimodal approaches
-- [Anthropic Structured Output](structured-output-anthropic) - Alternative provider
-- [Chat with PDFs using Gemini](chat-with-your-pdf-with-gemini) - Practical PDF processing
+- [OpenAI Multimodal](openai-multimodal.md) - Compare multimodal approaches
+- [Anthropic Structured Output](structured-output-anthropic.md) - Alternative provider
+- [Chat with PDFs using Gemini](chat-with-your-pdf-with-gemini.md) - Practical PDF processing

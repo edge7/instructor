@@ -231,7 +231,7 @@ Native caching delivers the same dramatic performance improvements you'd expect:
 - **DiskCache**: 5-10x improvement with persistence benefits
 - **Cost Reduction**: 50-90% API cost savings depending on cache hit rate
 
-For a comprehensive deep-dive into caching strategies and performance analysis, check out our [complete caching guide](../caching.md).
+For a comprehensive deep-dive into caching strategies and performance analysis, check out our [complete caching guide](caching.md).
 
 ## Getting Started
 

@@ -251,4 +251,4 @@ Here are typical performance results when processing 7 items:
 
 ---
 
-**Next Steps**: Learn about [error handling patterns](../concepts/error_handling.md) or explore [rate limiting with tenacity](../concepts/retrying.md) for production applications.
+**Next Steps**: Learn about [error handling patterns](../../concepts/error_handling.md) or explore [rate limiting with tenacity](../../concepts/retrying.md) for production applications.

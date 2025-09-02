@@ -220,6 +220,6 @@ Instructor, with Pydantic, simplifies interaction with language models. It is us
 
 - [Why Instructor is the Best Library](best_framework.md) - Learn about Instructor's philosophy and advantages
 - [Structured Outputs and Prompt Caching with Anthropic](structured-output-anthropic.md) - See how Instructor works with Claude
-- [Chain of Thought Example](../../examples/chain-of-thought.md) - Implement reasoning in your models
+- [Chain of Density Tutorial](../../tutorials/6-chain-of-density.ipynb) - Learn advanced prompting techniques
 
 If you enjoy the content or want to try out `instructor` please check out the [github](https://github.com/jxnl/instructor) and give us a star!

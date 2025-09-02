@@ -202,10 +202,11 @@ These are areas where `instructor` can continue to reduce friction for developer
 We encourage you to try `from_provider()` in your projects, particularly when experimenting with multiple LLMs. Feedback and suggestions for additional providers or features are always welcome.
 
 ## Related Documentation
-- [Provider Patching](/concepts/patching) - How provider integration works
-- [All Integrations](/integrations/) - Supported provider list
+- [Provider Patching](../../concepts/patching.md) - How provider integration works
+- [All Integrations](../../integrations/index.md) - Supported provider list
 
 ## See Also
-- [String-Based Initialization](string-based-init) - Alternative init method
-- [Framework Comparison](best_framework) - Multi-provider advantages
-- [Getting Started](introduction) - Quick start guide
+
+- [String-Based Initialization](string-based-init.md) - Alternative init method
+- [Framework Comparison](best_framework.md) - Multi-provider advantages
+- [Getting Started](introduction.md) - Quick start guide

@@ -12,7 +12,7 @@ TrueFoundry provides an enterprise-ready [AI Gateway](https://www.truefoundry.co
 
 Before integrating Instructor with TrueFoundry, ensure you have:
 
-1. **TrueFoundry Account**: Create a [TrueFoundry account](https://www.truefoundry.com/register) with at least one model provider and generate a Personal Access Token by following the instructions in [Generating Tokens](/gateway/authentication). For a quick setup guide, see our [Gateway Quick Start](https://docs.truefoundry.com/gateway/quick-start)
+1. **TrueFoundry Account**: Create a [TrueFoundry account](https://www.truefoundry.com/register) with at least one model provider and generate a Personal Access Token by following the instructions in [Generating Tokens](https://docs.truefoundry.com/gateway/authentication). For a quick setup guide, see our [Gateway Quick Start](https://docs.truefoundry.com/gateway/quick-start)
 2. **Instructor Installation**: Install Instructor using pip: `pip install instructor`
 3. **OpenAI Library**: Install the OpenAI Python library: `pip install openai`
 4. **Pydantic**: Install Pydantic for data validation: `pip install pydantic`

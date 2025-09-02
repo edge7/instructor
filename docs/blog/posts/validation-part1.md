@@ -488,10 +488,10 @@ From the simplicity of Pydantic and Instructor to the dynamic validation capabil
 If you enjoy the content or want to try out `Instructor` please check out the [github](https://github.com/jxnl/instructor) and give us a star!
 
 ## Related Documentation
-- [Core Validation Concepts](/concepts/validation) - Learn about validation fundamentals
-- [Reask Validation](/concepts/reask_validation) - Handle validation failures gracefully
+- [Core Validation Concepts](../../concepts/validation.md) - Learn about validation fundamentals
+- [Reask Validation](../../concepts/reask_validation.md) - Handle validation failures gracefully
 
 ## See Also
-- [Semantic Validation with Structured Outputs](semantic-validation-structured-outputs) - Next evolution in validation
-- [Why Bad Schemas Break LLMs](bad-schemas-could-break-llms) - Schema design best practices
-- [Pydantic Is Still All You Need](pydantic-is-still-all-you-need) - Why Pydantic validation matters
+- [Semantic Validation with Structured Outputs](semantic-validation-structured-outputs.md) - Next evolution in validation
+- [Why Bad Schemas Break LLMs](bad-schemas-could-break-llms.md) - Schema design best practices
+- [Pydantic Is Still All You Need](pydantic-is-still-all-you-need.md) - Why Pydantic validation matters

@@ -87,8 +87,6 @@ class Image(BaseModel):
         if isinstance(source, Path):
             return cls.from_path(source)
 
-        raise ValueError("Unable to determine image type or unsupported image format")
-
     @classmethod
     def autodetect_safely(cls, source: Union[str, Path]) -> Union[Image, str]:  # noqa: UP007
         """Safely attempt to autodetect an image from a source string or path.
@@ -121,9 +119,13 @@ class Image(BaseModel):
         )
 
     @classmethod
-    def from_gs_url(cls, data_uri: str) -> Image:
+    def from_gs_url(cls, data_uri: str, timeout: int = 30) -> Image:
         """
         Create an Image instance from a Google Cloud Storage URL.
+
+        Args:
+            data_uri: GCS URL starting with gs://
+            timeout: Request timeout in seconds (default: 30)
         """
         if not data_uri.startswith("gs://"):
             raise ValueError("URL must start with gs://")
@@ -131,7 +133,7 @@ class Image(BaseModel):
         public_url = f"https://storage.googleapis.com/{data_uri[5:]}"
 
         try:
-            response = requests.get(public_url)
+            response = requests.get(public_url, timeout=timeout)
             response.raise_for_status()
             media_type = response.headers.get("Content-Type")
             if media_type not in VALID_MIME_TYPES:
@@ -141,7 +143,9 @@ class Image(BaseModel):
 
             return cls(source=data_uri, media_type=media_type, data=data)
         except requests.RequestException as e:
-            raise ValueError(f"We only support public images for now") from e
+            raise ValueError(
+                "Failed to access GCS image (must be publicly readable)"
+            ) from e
 
     @classmethod  # Caching likely unnecessary
     def from_raw_base64(cls, data: str) -> Image:
@@ -165,6 +169,8 @@ class Image(BaseModel):
     @classmethod
     @lru_cache
     def from_url(cls, url: str) -> Image:
+        if url.startswith("gs://"):
+            return cls.from_gs_url(url)
         if cls.is_base64(url):
             return cls.from_base64(url)
 
@@ -302,8 +308,65 @@ class Audio(BaseModel):
     media_type: str = Field(description="MIME type of the audio")
 
     @classmethod
+    def autodetect(cls, source: str | Path) -> Audio:
+        """Attempt to autodetect an audio from a source string or Path."""
+        if isinstance(source, str):
+            if cls.is_base64(source):
+                return cls.from_base64(source)
+            if source.startswith(("http://", "https://")):
+                return cls.from_url(source)
+            if source.startswith("gs://"):
+                return cls.from_gs_url(source)
+            # Since detecting the max length of a file universally cross-platform is difficult,
+            # we'll just try/catch the Path conversion and file check
+            try:
+                path = Path(source)
+                if path.is_file():
+                    return cls.from_path(path)
+            except OSError:
+                pass  # Fall through to error
+
+            raise ValueError("Unable to determine audio source")
+
+        if isinstance(source, Path):
+            return cls.from_path(source)
+
+    @classmethod
+    def autodetect_safely(cls, source: Union[str, Path]) -> Union[Audio, str]:  # noqa: UP007
+        """Safely attempt to autodetect an audio from a source string or path.
+
+        Args:
+            source (Union[str,path]): The source string or path.
+        Returns:
+            An Audio if the source is detected to be a valid audio, otherwise
+            the source itself as a string.
+        """
+        try:
+            return cls.autodetect(source)
+        except ValueError:
+            return str(source)
+
+    @classmethod
+    def is_base64(cls, s: str) -> bool:
+        return bool(re.match(r"^data:audio/[a-zA-Z0-9+-]+;base64,", s))
+
+    @classmethod
+    def from_base64(cls, data_uri: str) -> Audio:
+        header, encoded = data_uri.split(",", 1)
+        media_type = header.split(":")[1].split(";")[0]
+        if media_type not in VALID_AUDIO_MIME_TYPES:
+            raise ValueError(f"Unsupported audio format: {media_type}")
+        return cls(
+            source=data_uri,
+            media_type=media_type,
+            data=encoded,
+        )
+
+    @classmethod
     def from_url(cls, url: str) -> Audio:
         """Create an Audio instance from a URL."""
+        if url.startswith("gs://"):
+            return cls.from_gs_url(url)
         response = requests.get(url)
         content_type = response.headers.get("content-type")
         assert content_type in VALID_AUDIO_MIME_TYPES, (
@@ -335,6 +398,35 @@ class Audio(BaseModel):
 
         data = base64.b64encode(path.read_bytes()).decode("utf-8")
         return cls(source=str(path), data=data, media_type=mime_type)
+
+    @classmethod
+    def from_gs_url(cls, data_uri: str, timeout: int = 30) -> Audio:
+        """
+        Create an Audio instance from a Google Cloud Storage URL.
+
+        Args:
+            data_uri: GCS URL starting with gs://
+            timeout: Request timeout in seconds (default: 30)
+        """
+        if not data_uri.startswith("gs://"):
+            raise ValueError("URL must start with gs://")
+
+        public_url = f"https://storage.googleapis.com/{data_uri[5:]}"
+
+        try:
+            response = requests.get(public_url, timeout=timeout)
+            response.raise_for_status()
+            media_type = response.headers.get("Content-Type")
+            if media_type not in VALID_AUDIO_MIME_TYPES:
+                raise ValueError(f"Unsupported audio format: {media_type}")
+
+            data = base64.b64encode(response.content).decode("utf-8")
+
+            return cls(source=data_uri, media_type=media_type, data=data)
+        except requests.RequestException as e:
+            raise ValueError(
+                "Failed to access GCS audio (must be publicly readable)"
+            ) from e
 
     def to_openai(self, mode: Mode) -> dict[str, Any]:
         """Convert the Audio instance to OpenAI's API format."""
@@ -415,6 +507,8 @@ class PDF(BaseModel):
                 return cls.from_base64(source)
             elif source.startswith(("http://", "https://")):
                 return cls.from_url(source)
+            elif source.startswith("gs://"):
+                return cls.from_gs_url(source)
 
             try:
                 if Path(source).is_file():
@@ -430,7 +524,20 @@ class PDF(BaseModel):
         elif isinstance(source, Path):
             return cls.from_path(source)
 
-        raise ValueError("Unable to determine PDF type or unsupported PDF format")
+    @classmethod
+    def autodetect_safely(cls, source: Union[str, Path]) -> Union[PDF, str]:  # noqa: UP007
+        """Safely attempt to autodetect a PDF from a source string or path.
+
+        Args:
+            source (Union[str,path]): The source string or path.
+        Returns:
+            A PDF if the source is detected to be a valid PDF, otherwise
+            the source itself as a string.
+        """
+        try:
+            return cls.autodetect(source)
+        except ValueError:
+            return str(source)
 
     @classmethod
     def is_base64(cls, s: str) -> bool:
@@ -481,8 +588,39 @@ class PDF(BaseModel):
             raise ValueError("Invalid or unsupported base64 PDF data") from e
 
     @classmethod
+    def from_gs_url(cls, data_uri: str, timeout: int = 30) -> PDF:
+        """
+        Create a PDF instance from a Google Cloud Storage URL.
+
+        Args:
+            data_uri: GCS URL starting with gs://
+            timeout: Request timeout in seconds (default: 30)
+        """
+        if not data_uri.startswith("gs://"):
+            raise ValueError("URL must start with gs://")
+
+        public_url = f"https://storage.googleapis.com/{data_uri[5:]}"
+
+        try:
+            response = requests.get(public_url, timeout=timeout)
+            response.raise_for_status()
+            media_type = response.headers.get("Content-Type", "application/pdf")
+            if media_type not in VALID_PDF_MIME_TYPES:
+                raise ValueError(f"Unsupported PDF format: {media_type}")
+
+            data = base64.b64encode(response.content).decode("utf-8")
+
+            return cls(source=data_uri, media_type=media_type, data=data)
+        except requests.RequestException as e:
+            raise ValueError(
+                "Failed to access GCS PDF (must be publicly readable)"
+            ) from e
+
+    @classmethod
     @lru_cache
     def from_url(cls, url: str) -> PDF:
+        if url.startswith("gs://"):
+            return cls.from_gs_url(url)
         parsed_url = urlparse(url)
         media_type, _ = mimetypes.guess_type(parsed_url.path)
 
@@ -741,6 +879,46 @@ def convert_contents(
     return converted_contents
 
 
+def autodetect_media(
+    source: str | Path | Image | Audio | PDF,
+) -> Image | Audio | PDF | str:
+    """Autodetect images, audio, or PDFs from a given source.
+
+    Args:
+        source: URL, file path, Path, or data URI to inspect.
+
+    Returns:
+        The detected :class:`Image`, :class:`Audio`, or :class:`PDF` instance.
+        If detection fails, the original source is returned.
+    """
+    if isinstance(source, (Image, Audio, PDF)):
+        return source
+
+    # Normalize once for cheap checks and mimetype guess
+    source = str(source)
+
+    if source.startswith("data:image/"):
+        return Image.autodetect_safely(source)
+    if source.startswith("data:audio/"):
+        return Audio.autodetect_safely(source)
+    if source.startswith("data:application/pdf"):
+        return PDF.autodetect_safely(source)
+
+    media_type, _ = mimetypes.guess_type(source)
+    if media_type in VALID_MIME_TYPES:
+        return Image.autodetect_safely(source)
+    if media_type in VALID_AUDIO_MIME_TYPES:
+        return Audio.autodetect_safely(source)
+    if media_type in VALID_PDF_MIME_TYPES:
+        return PDF.autodetect_safely(source)
+
+    for cls in (Image, Audio, PDF):
+        item = cls.autodetect_safely(source)  # type: ignore[arg-type]
+        if not isinstance(item, str):
+            return item
+    return source
+
+
 def convert_messages(
     messages: list[
         dict[
@@ -750,7 +928,8 @@ def convert_messages(
                 dict[str, Any],
                 Image,
                 Audio,
-                list[Union[str, dict[str, Any], Image, Audio]],  # noqa: UP007
+                PDF,
+                list[Union[str, dict[str, Any], Image, Audio, PDF]],  # noqa: UP007
             ],
         ]
     ],
@@ -776,10 +955,10 @@ def convert_messages(
         }
         if autodetect_images:
             if isinstance(content, list):
-                new_content: list[str | dict[str, Any] | Image | Audio] = []  # noqa: UP007
+                new_content: list[str | dict[str, Any] | Image | Audio | PDF] = []  # noqa: UP007
                 for item in content:
                     if isinstance(item, str):
-                        new_content.append(Image.autodetect_safely(item))
+                        new_content.append(autodetect_media(item))
                     elif is_image_params(item):
                         new_content.append(
                             ImageWithCacheControl.from_image_params(
@@ -790,7 +969,7 @@ def convert_messages(
                         new_content.append(item)
                 content = new_content
             elif isinstance(content, str):
-                content = Image.autodetect_safely(content)
+                content = autodetect_media(content)
             elif is_image_params(content):
                 content = ImageWithCacheControl.from_image_params(
                     cast(ImageParams, content)
@@ -838,15 +1017,12 @@ def extract_genai_multimodal_content(
         # Now we need to support a few cases
         for content_part in content.parts:
             if content_part.text and autodetect_images:
-                # Detect if the text is an image
-                converted_item = Image.autodetect_safely(content_part.text)
+                converted_item = autodetect_media(content_part.text)
 
-                # We only do autodetection for images for now
-                if isinstance(converted_item, Image):
+                if isinstance(converted_item, (Image, Audio, PDF)):
                     converted_contents.append(converted_item.to_genai())
                     continue
 
-                # If it's not an image or audio, we just return the text
                 converted_contents.append(content_part)
             else:
                 converted_contents.append(content_part)

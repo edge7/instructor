@@ -115,14 +115,17 @@ def _make_field_optional(
             Optional[generic_base[modified_args]] if generic_base else None
         )
         tmp_field.default = None
+        tmp_field.default_factory = None
     # If the field is a BaseModel, then recursively convert it's
     # attributes to optionals.
     elif isinstance(annotation, type) and issubclass(annotation, BaseModel):
         tmp_field.annotation = Optional[Partial[annotation, MakeFieldsOptional]]  # type: ignore[assignment, valid-type]
         tmp_field.default = {}
+        tmp_field.default_factory = None
     else:
         tmp_field.annotation = Optional[field.annotation]  # type:ignore
         tmp_field.default = None
+        tmp_field.default_factory = None
 
     return tmp_field.annotation, tmp_field  # type: ignore
 
@@ -300,12 +303,24 @@ class PartialBase(Generic[T_Model]):
                     )
 
                 if mode == Mode.GENAI_STRUCTURED_OUTPUTS:
-                    yield chunk.text
+                    try:
+                        yield chunk.text
+                    except ValueError as e:
+                        if "valid `Part`" in str(e):
+                            # Skip chunk with invalid Part (e.g., due to finish_reason=1 token limit)
+                            continue
+                        raise
                 if mode == Mode.GENAI_TOOLS:
                     fc = chunk.candidates[0].content.parts[0].function_call.args
                     yield json.dumps(fc)
                 if mode == Mode.GEMINI_JSON:
-                    yield chunk.text
+                    try:
+                        yield chunk.text
+                    except ValueError as e:
+                        if "valid `Part`" in str(e):
+                            # Skip chunk with invalid Part (e.g., due to finish_reason=1 token limit)
+                            continue
+                        raise
                 if mode == Mode.GEMINI_TOOLS:
                     resp = chunk.candidates[0].content.parts[0].function_call
                     resp_dict = type(resp).to_dict(resp)  # type:ignore
@@ -378,12 +393,24 @@ class PartialBase(Generic[T_Model]):
                         chunk.candidates[0].content.parts[0].function_call.args
                     )
                 if mode == Mode.GENAI_STRUCTURED_OUTPUTS:
-                    yield chunk.text
+                    try:
+                        yield chunk.text
+                    except ValueError as e:
+                        if "valid `Part`" in str(e):
+                            # Skip chunk with invalid Part (e.g., due to finish_reason=1 token limit)
+                            continue
+                        raise
                 if mode == Mode.GENAI_TOOLS:
                     fc = chunk.candidates[0].content.parts[0].function_call.args
                     yield json.dumps(fc)
                 if mode == Mode.GEMINI_JSON:
-                    yield chunk.text
+                    try:
+                        yield chunk.text
+                    except ValueError as e:
+                        if "valid `Part`" in str(e):
+                            # Skip chunk with invalid Part (e.g., due to finish_reason=1 token limit)
+                            continue
+                        raise
                 if mode == Mode.GEMINI_TOOLS:
                     resp = chunk.candidates[0].content.parts[0].function_call
                     resp_dict = type(resp).to_dict(resp)  # type:ignore

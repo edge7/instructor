@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from textwrap import dedent
-from typing import Any
+from typing import Any, cast
 
 from openai import pydantic_function_tool
 
@@ -23,6 +23,7 @@ def reask_tools(
     kwargs: dict[str, Any],
     response: Any,
     exception: Exception,
+    failed_attempts: list[Any] | None = None,  # noqa: ARG001
 ):
     """
     Handle reask for OpenAI tools mode when validation fails.
@@ -51,6 +52,7 @@ def reask_responses_tools(
     kwargs: dict[str, Any],
     response: Any,
     exception: Exception,
+    failed_attempts: list[Any] | None = None,  # noqa: ARG001
 ):
     """
     Handle reask for OpenAI responses tools mode when validation fails.
@@ -79,6 +81,7 @@ def reask_md_json(
     kwargs: dict[str, Any],
     response: Any,
     exception: Exception,
+    failed_attempts: list[Any] | None = None,  # noqa: ARG001
 ):
     """
     Handle reask for OpenAI JSON modes when validation fails.
@@ -88,6 +91,7 @@ def reask_md_json(
     """
     kwargs = kwargs.copy()
     reask_msgs = [dump_message(response.choices[0].message)]
+
     reask_msgs.append(
         {
             "role": "user",
@@ -102,6 +106,7 @@ def reask_default(
     kwargs: dict[str, Any],
     response: Any,
     exception: Exception,
+    failed_attempts: list[Any] | None = None,  # noqa: ARG001
 ):
     """
     Handle reask for OpenAI default mode when validation fails.
@@ -111,6 +116,7 @@ def reask_default(
     """
     kwargs = kwargs.copy()
     reask_msgs = [dump_message(response.choices[0].message)]
+
     reask_msgs.append(
         {
             "role": "user",
@@ -164,7 +170,7 @@ def handle_parallel_tools(
         )
     new_kwargs["tools"] = handle_parallel_model(response_model)
     new_kwargs["tool_choice"] = "auto"
-    return ParallelModel(typehint=response_model), new_kwargs
+    return cast(type[Any], ParallelModel(typehint=response_model)), new_kwargs
 
 
 def handle_functions(
@@ -433,22 +439,23 @@ def handle_json_modes(
         )
         new_kwargs["messages"] = merge_consecutive_messages(new_kwargs["messages"])
 
-    if new_kwargs["messages"][0]["role"] != "system":
-        new_kwargs["messages"].insert(
-            0,
-            {
-                "role": "system",
-                "content": message,
-            },
-        )
-    elif isinstance(new_kwargs["messages"][0]["content"], str):
-        new_kwargs["messages"][0]["content"] += f"\n\n{message}"
-    elif isinstance(new_kwargs["messages"][0]["content"], list):
-        new_kwargs["messages"][0]["content"][0]["text"] += f"\n\n{message}"
-    else:
-        raise ValueError(
-            "Invalid message format, must be a string or a list of messages"
-        )
+    if mode != Mode.JSON_SCHEMA:
+        if new_kwargs["messages"][0]["role"] != "system":
+            new_kwargs["messages"].insert(
+                0,
+                {
+                    "role": "system",
+                    "content": message,
+                },
+            )
+        elif isinstance(new_kwargs["messages"][0]["content"], str):
+            new_kwargs["messages"][0]["content"] += f"\n\n{message}"
+        elif isinstance(new_kwargs["messages"][0]["content"], list):
+            new_kwargs["messages"][0]["content"][0]["text"] += f"\n\n{message}"
+        else:
+            raise ValueError(
+                "Invalid message format, must be a string or a list of messages"
+            )
 
     return response_model, new_kwargs
 

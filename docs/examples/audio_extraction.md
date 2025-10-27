@@ -52,7 +52,7 @@ print(resp)
 
 ## How It Works
 
-1. First, we import the necessary libraries including the `Audio` class from `instructor.multimodal`.
+1. First, we import the necessary libraries including the `Audio` class from `instructor.processing.multimodal`.
 
 2. We define a Pydantic model `Person` that specifies the structure of the information we want to extract from the audio:
    - `name`: The person's name

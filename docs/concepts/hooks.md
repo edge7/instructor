@@ -15,7 +15,7 @@ The Hooks system in Instructor is based on the `Hooks` class, which manages even
 
 ### `completion:kwargs`
 
-This hook is emitted when completion arguments are provided. It receives all arguments passed to the completion function. These will contain the `model`, `messages`, `tools`, AFTER any `response_model` or `validation_context` parameters have been converted to their respective values.
+This hook is emitted when completion arguments are provided. It receives all arguments passed to the completion function. These will contain the `model`, `messages`, `tools`, AFTER any `response_model` or `context` parameters have been converted to their respective values.
 
 ```python
 def handler(*args, **kwargs) -> None: ...
@@ -482,6 +482,145 @@ client.on("completion:last_attempt", monitor.handle_error)
 print(f"Error statistics: {monitor.get_stats()}")
 ```
 
+## Hook Combination
+
+The Hooks system supports powerful hook combination capabilities, allowing you to compose different hook sets for different use cases:
+
+### Basic Hook Combination
+
+```python
+import instructor
+from instructor.core.hooks import Hooks
+
+# Create different hook sets
+logging_hooks = Hooks()
+logging_hooks.on("completion:kwargs", lambda **kw: print("Logging kwargs"))
+logging_hooks.on("completion:response", lambda resp: print("Logging response"))
+
+metrics_hooks = Hooks()
+metrics_hooks.on("completion:kwargs", lambda **kw: print("Recording metrics"))
+
+debug_hooks = Hooks()
+debug_hooks.on("parse:error", lambda err: print(f"Debug: Parse error - {err}"))
+
+# Combine hooks using the + operator
+combined_hooks = logging_hooks + metrics_hooks
+client = instructor.from_provider("openai/gpt-4.1-mini", hooks=combined_hooks)
+
+# Add more hooks in-place using +=
+logging_hooks += debug_hooks
+
+# Combine multiple hooks at once
+all_hooks = Hooks.combine(logging_hooks, metrics_hooks, debug_hooks)
+```
+
+### Hook Combination Methods
+
+The `Hooks` class provides several methods for combining hook instances:
+
+- **`__add__`**: Create a new combined Hooks instance using `+`
+- **`__iadd__`**: Add hooks in-place using `+=`  
+- **`combine()`**: Class method to combine multiple Hooks instances
+- **`copy()`**: Create a deep copy of a Hooks instance
+
+```python
+# Method 1: + operator (creates new instance)
+combined = hooks1 + hooks2
+
+# Method 2: += operator (modifies in-place)
+hooks1 += hooks2
+
+# Method 3: combine() class method (multiple at once)
+all_hooks = Hooks.combine(hooks1, hooks2, hooks3)
+
+# Method 4: copy() for creating independent copies
+hooks_copy = original_hooks.copy()
+```
+
+## Per-Call Hooks
+
+You can now specify hooks for individual API calls, which are automatically combined with client-level hooks:
+
+```python
+import instructor
+from instructor.core.hooks import Hooks
+
+# Set up client with global hooks
+client_hooks = Hooks()
+client_hooks.on("completion:kwargs", lambda **kw: print("Client hook: kwargs"))
+
+client = instructor.from_provider("openai/gpt-4.1-mini", hooks=client_hooks)
+
+# Create per-call hooks for debugging specific requests
+debug_hooks = Hooks()
+debug_hooks.on("completion:response", lambda resp: print("Debug hook: response"))
+debug_hooks.on("parse:error", lambda err: print(f"Debug hook: error - {err}"))
+
+# Use per-call hooks - they combine with client hooks
+user = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": "Extract: Alice is 25"}],
+    response_model=User,
+    hooks=debug_hooks  # Per-call hooks combined with client hooks
+)
+```
+
+### Per-Call Hook Features
+
+- **Automatic Combination**: Per-call hooks are automatically combined with client hooks using the `+` operator
+- **Client Hook Preservation**: Client-level hooks remain unchanged after per-call hook usage
+- **Backward Compatibility**: Existing code continues to work unchanged
+- **Flexible Composition**: Mix and match different hook sets for different requests
+
+### Per-Call Hooks Example
+
+```python
+import instructor
+from instructor.core.hooks import Hooks
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+# Client with standard logging
+client_hooks = Hooks()
+client_hooks.on("completion:kwargs", lambda **kw: print("Standard logging"))
+
+client = instructor.from_provider("openai/gpt-4.1-mini", hooks=client_hooks)
+
+# Performance monitoring hooks for specific calls
+perf_hooks = Hooks()
+perf_hooks.on("completion:response", lambda resp: print(f"Tokens used: {resp.usage}"))
+
+# Debug hooks for troublesome requests
+debug_hooks = Hooks()
+debug_hooks.on("parse:error", lambda err: print(f"Detailed error: {err}"))
+
+# Regular call - only client hooks
+user1 = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": "Extract: Bob is 30"}],
+    response_model=User
+)
+
+# Performance monitoring call - client + perf hooks
+user2 = client.chat.completions.create(
+    model="gpt-3.5-turbo", 
+    messages=[{"role": "user", "content": "Extract: Carol is 25"}],
+    response_model=User,
+    hooks=perf_hooks
+)
+
+# Debug problematic call - client + debug hooks
+user3 = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": "Extract: Invalid data"}],
+    response_model=User,
+    hooks=debug_hooks
+)
+```
+
 ## Hooks in Testing
 
 Hooks are particularly useful for testing, as they allow you to inspect the arguments and responses without modifying your application code:
@@ -511,6 +650,30 @@ class TestMyApp(unittest.TestCase):
         # You can also inspect the arguments
         response_arg = mock_handler.call_args[0][0]
         self.assertEqual(response_arg.model, "gpt-4.1-mini")
+
+    def test_per_call_hooks(self):
+        """Test that per-call hooks work correctly with client hooks."""
+        client = instructor.from_provider("openai/gpt-4.1-mini")
+        client_mock = Mock()
+        per_call_mock = Mock()
+
+        client.on("completion:response", client_mock)
+
+        # Create per-call hooks
+        from instructor.core.hooks import Hooks
+        per_call_hooks = Hooks()
+        per_call_hooks.on("completion:response", per_call_mock)
+
+        # Make a call with per-call hooks
+        result = client.chat.completions.create(
+            messages=[{"role": "user", "content": "Hello"}],
+            response_model=str,
+            hooks=per_call_hooks
+        )
+
+        # Both client and per-call hooks should have been called
+        client_mock.assert_called_once()
+        per_call_mock.assert_called_once()
 ```
 
 This approach allows you to test your code without mocking the entire client.

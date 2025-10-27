@@ -82,10 +82,42 @@ client = instructor.from_openai(
 
 ## Handling Retry Failures
 
-When all retries fail, depending on your configuration:
+When all retries fail, Instructor raises an `InstructorRetryException` that contains comprehensive information about all failed attempts:
 
-1. With `throw_error=True` (default): An exception is raised
-2. With `throw_error=False`: The last failed response is returned, and you can handle it gracefully
+```python
+from instructor.core.exceptions import InstructorRetryException
+
+try:
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": "Product: Invalid data"}],
+        response_model=Product,
+        max_retries=3
+    )
+except InstructorRetryException as e:
+    print(f"Failed after {e.n_attempts} attempts")
+    print(f"Total usage: {e.total_usage}")
+    
+    # New: Access detailed information about each failed attempt
+    for attempt in e.failed_attempts:
+        print(f"Attempt {attempt.attempt_number}: {attempt.exception}")
+        if attempt.completion:
+            # Analyze the raw completion that failed validation
+            print(f"Raw response: {attempt.completion}")
+```
+
+The `InstructorRetryException` now includes:
+
+- `failed_attempts`: A list of `FailedAttempt` objects containing:
+  - `attempt_number`: The retry attempt number
+  - `exception`: The specific exception that occurred
+  - `completion`: The raw LLM response (when available)
+- `n_attempts`: Total number of attempts made
+- `total_usage`: Total token usage across all attempts
+- `last_completion`: The final failed completion
+- `messages`: The conversation history
+
+This comprehensive tracking enables better debugging and analysis of retry patterns.
 
 For more on handling validation failures, see [Fallback Strategies](../../concepts/error_handling.md).
 

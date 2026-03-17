@@ -452,6 +452,7 @@ def update_genai_kwargs(
             "automatic_function_calling",
             "labels",
             "cached_content",
+            "model_armor_config",
         ]
         for field in config_fields_to_merge:
             if isinstance(user_config, dict):

@@ -518,3 +518,50 @@ def test_handle_genai_tools_skips_tools_and_system_instruction_with_cached_conte
     assert result_config.system_instruction is None
     assert result_config.tools is None
     assert result_config.tool_config is None
+
+
+def test_update_genai_kwargs_config_object_model_armor_config():
+    """Test that model_armor_config is extracted from config object."""
+
+    class MockModelArmorConfig:
+        def __init__(self):
+            self.prompt_template_name = (
+                "projects/123/locations/us-central1/templates/tmpl1"
+            )
+            self.response_template_name = (
+                "projects/123/locations/us-central1/templates/tmpl2"
+            )
+
+    class MockConfig:
+        def __init__(self):
+            self.thinking_config = None
+            self.automatic_function_calling = None
+            self.labels = None
+            self.cached_content = None
+            self.model_armor_config = MockModelArmorConfig()
+
+    mock_config = MockConfig()
+    kwargs = {"config": mock_config}
+    base_config = {}
+
+    result = update_genai_kwargs(kwargs, base_config)
+
+    assert "model_armor_config" in result
+    assert (
+        result["model_armor_config"].prompt_template_name
+        == "projects/123/locations/us-central1/templates/tmpl1"
+    )
+
+
+def test_update_genai_kwargs_config_dict_model_armor_config():
+    """Test that model_armor_config is merged when config is a dict."""
+    armor_config = {
+        "prompt_template_name": "projects/123/locations/us-central1/templates/tmpl1",
+        "response_template_name": "projects/123/locations/us-central1/templates/tmpl2",
+    }
+    kwargs = {"config": {"model_armor_config": armor_config}}
+    base_config = {}
+
+    result = update_genai_kwargs(kwargs, base_config)
+
+    assert result["model_armor_config"] == armor_config

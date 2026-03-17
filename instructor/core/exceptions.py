@@ -599,3 +599,15 @@ class MultimodalError(ValueError, InstructorError):
             context_parts.append(f"file: {file_path}")
         context = f" ({', '.join(context_parts)})" if context_parts else ""
         super().__init__(f"{message}{context}", *args, **kwargs)
+
+
+class ContentBlockedError(InstructorError):
+    """Raised when the response is blocked by safety filters or Model Armor."""
+
+    def __init__(self, block_reason=None, block_message=None):
+        self.block_reason = block_reason
+        self.block_message = block_message
+        msg = f"Response blocked: {block_reason or 'unknown reason'}"
+        if block_message:
+            msg += f" - {block_message}"
+        super().__init__(msg)

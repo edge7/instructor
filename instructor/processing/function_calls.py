@@ -269,6 +269,7 @@ class OpenAISchema(BaseModel):
         validation_context: Optional[dict[str, Any]] = None,
         strict: Optional[bool] = None,
     ) -> BaseModel:
+        _check_genai_blocked(completion)  # Check filtered content FIRST
         return cls.model_validate_json(
             completion.text, context=validation_context, strict=strict
         )
@@ -283,6 +284,9 @@ class OpenAISchema(BaseModel):
         from google.genai import types
 
         assert isinstance(completion, types.GenerateContentResponse)
+        _check_genai_blocked(
+            completion
+        )  # Check content filter BEFORE candidates for more specific error
         assert len(completion.candidates) == 1
 
         # Filter out thought parts (parts with thought: true)
@@ -493,6 +497,7 @@ class OpenAISchema(BaseModel):
         validation_context: Optional[dict[str, Any]] = None,
         strict: Optional[bool] = None,
     ) -> BaseModel:
+        _check_genai_blocked(completion)
         try:
             text = completion.text
         except ValueError:
@@ -808,3 +813,18 @@ def openai_schema(cls: type[BaseModel]) -> OpenAISchema:
     )
 
     return cast(OpenAISchema, schema)
+
+
+def _check_genai_blocked(completion):
+    from instructor.core.exceptions import ContentBlockedError
+
+    if hasattr(completion, "candidates") and not completion.candidates:
+        block_reason = None
+        block_message = None
+        if hasattr(completion, "prompt_feedback") and completion.prompt_feedback:
+            pf = completion.prompt_feedback
+            block_reason = getattr(pf, "block_reason", None)
+            block_message = getattr(pf, "block_reason_message", None)
+        raise ContentBlockedError(
+            block_reason=block_reason, block_message=block_message
+        )

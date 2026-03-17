@@ -12,6 +12,7 @@ from instructor.core.exceptions import (
     ModeError,
     ClientError,
     FailedAttempt,
+    ContentBlockedError,
 )
 
 
@@ -26,6 +27,7 @@ def test_all_exceptions_can_be_imported():
     assert ConfigurationError is not None
     assert ModeError is not None
     assert ClientError is not None
+    assert ContentBlockedError is not None
 
 
 def test_exception_hierarchy():
@@ -37,6 +39,7 @@ def test_exception_hierarchy():
     assert issubclass(ConfigurationError, InstructorError)
     assert issubclass(ModeError, InstructorError)
     assert issubclass(ClientError, InstructorError)
+    assert issubclass(ContentBlockedError, InstructorError)
 
 
 def test_base_instructor_error_can_be_caught():
@@ -594,3 +597,28 @@ def test_failed_attempts_exception_chaining():
         assert chained_error.failed_attempts is not None
         assert len(chained_error.failed_attempts) == 1
         assert chained_error.failed_attempts[0].exception.args[0] == "Original failure"
+
+
+def test_content_blocked_error_attributes():
+    """Test ContentBlockedError stores block_reason and block_message."""
+    err = ContentBlockedError(
+        block_reason="MODEL_ARMOR", block_message="Blocked by Floor Setting"
+    )
+    assert err.block_reason == "MODEL_ARMOR"
+    assert err.block_message == "Blocked by Floor Setting"
+    assert "MODEL_ARMOR" in str(err)
+    assert "Blocked by Floor Setting" in str(err)
+
+
+def test_content_blocked_error_defaults():
+    """Test ContentBlockedError with no arguments."""
+    err = ContentBlockedError()
+    assert err.block_reason is None
+    assert err.block_message is None
+    assert "unknown reason" in str(err)
+
+
+def test_content_blocked_error_caught_by_base():
+    """Test that InstructorError catches ContentBlockedError."""
+    with pytest.raises(InstructorError):
+        raise ContentBlockedError(block_reason="SAFETY")

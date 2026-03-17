@@ -249,6 +249,10 @@ def retry_sync(
                     )
                     raise e
                 except Exception as e:
+                    from .exceptions import ContentBlockedError
+
+                    if isinstance(e, ContentBlockedError):
+                        raise  # No retry in case of Content Blocked
                     # Emit completion:error for non-validation errors (API errors, network errors, etc.)
                     logger.debug(f"Completion error: {e}")
                     hooks.emit_completion_error(e)
@@ -406,6 +410,12 @@ async def retry_async(
                     )
                     raise e
                 except Exception as e:
+                    from .exceptions import ContentBlockedError
+
+                    if isinstance(
+                        e, ContentBlockedError
+                    ):  # No retry in case of blocked content
+                        raise
                     # Emit completion:error for non-validation errors (API errors, network errors, etc.)
                     logger.debug(f"Completion error: {e}")
                     hooks.emit_completion_error(e)
